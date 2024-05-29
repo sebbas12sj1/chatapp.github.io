@@ -1,6 +1,5 @@
 const correctPassword = "01/12/2022";
 let username = "";
-let socket;
 
 function authenticate() {
     const passwordInput = document.getElementById('password').value;
@@ -25,25 +24,7 @@ function setName() {
         document.getElementById('nameEntry').classList.add('hidden');
         document.getElementById('chat').classList.remove('hidden');
 
-        socket = new WebSocket('ws://localhost:8080');
-
-        socket.onmessage = function(event) {
-            let messageData;
-            try {
-                messageData = JSON.parse(event.data);
-            } catch (e) {
-                console.error('Invalid JSON:', e);
-                return;
-            }
-            if (messageData.type === 'text') {
-                displayMessage(messageData.username, messageData.message);
-            } else if (messageData.type === 'image') {
-                displayImage(messageData.username, messageData.imageData);
-            } else if (messageData.type === 'clear') {
-                clearMessages();
-            }
-        };
-
+        loadMessages();
     } else {
         nameErrorElement.classList.remove('hidden');
     }
@@ -57,9 +38,10 @@ function sendMessage() {
         const messageData = {
             type: 'text',
             username: username,
-            message: messageText
+            message: messageText,
+            timestamp: Date.now()
         };
-        socket.send(JSON.stringify(messageData));
+        database.ref('messages').push(messageData);
         messageInput.value = "";
     }
 }
@@ -75,9 +57,10 @@ function sendImage() {
             const messageData = {
                 type: 'image',
                 username: username,
-                imageData: imageData
+                imageData: imageData,
+                timestamp: Date.now()
             };
-            socket.send(JSON.stringify(messageData));
+            database.ref('messages').push(messageData);
         };
         reader.readAsDataURL(file);
     }
@@ -111,10 +94,25 @@ function closePopup() {
 }
 
 function clearChat() {
-    document.getElementById('messages').innerHTML = '';
-    socket.send(JSON.stringify({ type: 'clear' }));
+    database.ref('messages').remove();
+    clearMessages();
 }
 
 function clearMessages() {
     document.getElementById('messages').innerHTML = '';
+}
+
+function loadMessages() {
+    database.ref('messages').on('child_added', function(snapshot) {
+        const messageData = snapshot.val();
+        if (messageData.type === 'text') {
+            displayMessage(messageData.username, messageData.message);
+        } else if (messageData.type === 'image') {
+            displayImage(messageData.username, messageData.imageData);
+        }
+    });
+
+    database.ref('messages').on('child_removed', function() {
+        clearMessages();
+    });
 }
