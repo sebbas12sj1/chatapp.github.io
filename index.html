@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="auth" class="flex justify-center items-center h-screen p-4">
+        <div class="bg-gray-800 p-6 rounded w-full max-w-sm">
+            <h2 class="text-xl mb-4">Enter Chat Password</h2>
+            <input type="password" id="password" class="p-2 rounded w-full mb-4">
+            <button onclick="authenticate()" class="bg-blue-500 p-2 rounded w-full">Enter</button>
+            <p id="error" class="text-red-500 mt-2 hidden">Incorrect password.</p>
+        </div>
+    </div>
+    
+    <div id="nameEntry" class="hidden flex justify-center items-center h-screen p-4">
+        <div class="bg-gray-800 p-6 rounded w-full max-w-sm">
+            <h2 class="text-xl mb-4">Enter Your Name</h2>
+            <input type="text" id="username" class="p-2 rounded w-full mb-4">
+            <button onclick="setName()" class="bg-blue-500 p-2 rounded w-full">Enter</button>
+            <p id="nameError" class="text-red-500 mt-2 hidden">Please enter a valid name.</p>
+        </div>
+    </div>
+    
+    <div id="chat" class="hidden flex flex-col h-screen p-4">
+        <header class="flex justify-between items-center p-4 bg-gray-800 rounded mb-4">
+            <h2 class="text-xl">Chat Privado</h2>
+            <button onclick="clearChat()" class="bg-red-500 p-2 rounded">Eliminar Todo el Chat</button>
+        </header>
+        <div class="flex-grow overflow-y-scroll p-4 bg-gray-800 rounded mb-4">
+            <div id="messages" class="space-y-4"></div>
+        </div>
+        <div class="p-4 bg-gray-800 rounded flex items-center space-x-2">
+            <input type="text" id="message" class="p-2 rounded bg-gray-700 text-white w-full" placeholder="Type your message...">
+            <button onclick="sendMessage()" class="bg-blue-500 p-2 rounded">Send</button>
+            <input type="file" id="imageInput" class="hidden" accept="image/*" onchange="sendImage()">
+            <button onclick="document.getElementById('imageInput').click()" class="bg-green-500 p-2 rounded">Send Image</button>
+        </div>
+    </div>
+
+    <div id="imagePopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+        <div class="relative">
+            <img id="popupImage" class="max-w-full max-h-full rounded">
+            <button onclick="closePopup()" class="absolute top-0 right-0 bg-red-500 text-white rounded-full p-2 m-2">X</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
