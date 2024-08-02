@@ -1,22 +1,207 @@
 /* styles.css */
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #2e2e2e;
+    color: #f5f5f5;
+    height: 100vh;
+    overflow: hidden;
 }
 
-#messages div {
-    animation: fadeIn 0.5s ease-in-out;
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
-#messages img {
-    max-width: 150px;
+header {
+    background-color: #1e1e1e;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
+}
+
+header:hover {
+    background-color: #333;
+}
+
+#search {
+    flex: 1;
+    padding: 5px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+    transition: background-color 0.3s;
+}
+
+#search:focus {
+    background-color: #444;
+    outline: none;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+}
+
+button {
+    background-color: #333;
+    border: none;
+    color: #bbb;
+    padding: 10px;
     cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: background-color 0.3s, transform 0.2s;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+button:hover {
+    background-color: #444;
+    transform: scale(1.1);
+}
+
+button i {
+    font-size: 16px;
+}
+
+button:active {
+    transform: scale(1.05);
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.tabs {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tab-buttons {
+    display: flex;
+    border-bottom: 1px solid #333;
+}
+
+.tab-button {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-bottom: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    position: relative;
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
+    display: flex;
+    align-items: center;
+    border-radius: 4px 4px 0 0;
+}
+
+.tab-button.active {
+    background-color: #333;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.tab-close {
+    margin-left: 10px;
+    cursor: pointer;
+    color: #f00;
+    transition: color 0.3s;
+}
+
+.tab-close:hover {
+    color: #f88;
+}
+
+.tab-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.tab-pane {
+    display: none;
+    height: 100%;
+    padding: 10px;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.editor-container {
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+}
+
+.CodeMirror {
+    height: 100%;
+    width: 100%;
+    border: none;
+    font-size: 14px;
+    transition: font-size 0.3s;
+}
+
+.CodeMirror.cm-s-dracula {
+    background-color: #282a36;
+    color: #f8f8f2;
+}
+
+.output-container {
+    flex: 1;
+    background-color: #1e1e1e;
+    padding: 10px;
+    border-left: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+}
+
+.output-tabs {
+    display: flex;
+    border-bottom: 1px solid #333;
+}
+
+.output-tab {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-bottom: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.output-tab.active {
+    background-color: #333;
+    color: #fff;
+}
+
+.output-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.output-pane {
+    display: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.output-pane.active {
+    display: block;
+}
+
+.highlight {
+    background-color: rgba(255, 255, 0, 0.2);
 }
