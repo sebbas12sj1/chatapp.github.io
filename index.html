@@ -1,69 +1,2253 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor de Código</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cogniscan — Evaluación de Coeficiente Intelectual</title>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e1a;
+    --bg-2: #0f1422;
+    --surface: #151c2e;
+    --surface-2: #1d2640;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #e6e8f0;
+    --text-dim: #8891a8;
+    --text-dimmer: #5a6278;
+    --accent: #00e4a8;
+    --accent-2: #7c5cff;
+    --danger: #ff5a7a;
+    --warn: #ffb547;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(1200px 600px at 70% -10%, rgba(124,92,255,0.14), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(0,228,168,0.10), transparent 60%),
+      var(--bg);
+  }
+  ::selection { background: rgba(124,92,255,0.35); }
+
+  /* ------------ Top bar ------------ */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+    background: rgba(10,14,26,0.65);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+  .brand-mark {
+    width: 28px; height: 28px; position: relative;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 8px; display: grid; place-items: center;
+    box-shadow: 0 6px 22px rgba(124,92,255,0.35);
+  }
+  .brand-mark::after { content:''; width: 10px; height: 10px; border-radius: 2px; background: var(--bg); transform: rotate(45deg); }
+  .brand-name { font-weight: 700; }
+  .brand-name .k { color: var(--accent); }
+  .meta-chip {
+    font-size: 12px; color: var(--text-dim); letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 100px;
+  }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 40px 32px 80px; }
+  .screen { display: none; animation: fadeIn .35s ease-out; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .btn {
+    font: inherit; font-weight: 600; font-size: 14px;
+    padding: 14px 22px; border-radius: 12px; cursor: pointer;
+    border: 1px solid transparent; transition: all .2s ease;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #30f0c2); color: #052016; box-shadow: 0 10px 30px -10px rgba(0,228,168,0.6); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 34px -10px rgba(0,228,168,0.7); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)) , var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+  }
+
+  /* ------------ Start screen ------------ */
+  .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; padding: 48px 0 32px; }
+  .hero h1 { font-size: clamp(36px, 5vw, 58px); line-height: 1.05; font-weight: 700; letter-spacing: -0.035em; margin-bottom: 18px; }
+  .hero h1 .grad { background: linear-gradient(120deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.lede { color: var(--text-dim); font-size: 17px; line-height: 1.6; max-width: 560px; margin-bottom: 28px; }
+  .hero-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 32px; }
+  .hero-meta .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 100px; font-size: 13px; color: var(--text-dim);
+  }
+  .hero-meta .chip b { color: var(--text); font-weight: 600; }
+  .hero-actions { display: flex; gap: 12px; align-items: center; }
+  .hero-visual { position: relative; }
+  .hero-visual canvas {
+    width: 100%; height: 420px;
+    background: radial-gradient(circle at 60% 40%, rgba(124,92,255,0.18), transparent 60%);
+    border-radius: 24px;
+  }
+  .hero-legend {
+    position: absolute; inset: auto 16px 16px auto;
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: 11px; color: var(--text-dim);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+  .feature { padding: 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+  .feature .icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(124,92,255,0.12); color: var(--accent-2); display: grid; place-items: center; margin-bottom: 14px; font-weight: 700; }
+  .feature h3 { font-size: 14px; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .feature p { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+
+  .info-note {
+    margin-top: 28px; padding: 16px 20px; border-radius: 14px;
+    border: 1px solid var(--border); color: var(--text-dim);
+    font-size: 13px; line-height: 1.6;
+    background: linear-gradient(90deg, rgba(124,92,255,0.05), transparent);
+  }
+  .info-note b { color: var(--text); }
+
+  /* ------------ Setup screen ------------ */
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+  .setup-card { padding: 28px; }
+  .setup-card h3 { font-size: 18px; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .setup-card .sub { color: var(--text-dim); font-size: 13px; margin-bottom: 18px; line-height: 1.55; }
+  .field-group { display: flex; flex-direction: column; gap: 16px; }
+  .input {
+    width: 100%; padding: 14px 16px; border-radius: 12px;
+    border: 1.5px solid var(--border); background: var(--bg-2); color: var(--text);
+    font: inherit; font-size: 15px; transition: all .2s ease;
+  }
+  .input:focus { outline: none; border-color: var(--accent-2); background: var(--surface); box-shadow: 0 0 0 3px rgba(124,92,255,0.15); }
+  .field-label { font-size: 12px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .camera-preview-box {
+    width: 100%; aspect-ratio: 4/3; background: #000;
+    border-radius: 14px; overflow: hidden; position: relative;
+    border: 1px solid var(--border); display: grid; place-items: center;
+  }
+  .camera-preview-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .camera-status {
+    position: absolute; bottom: 10px; left: 10px; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 5px 10px; border-radius: 100px;
+    background: rgba(0,0,0,0.6); color: var(--text); letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 6px;
+    backdrop-filter: blur(6px);
+  }
+  .camera-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+  .camera-status.ok .dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.8s ease infinite; }
+  .camera-status.err .dot { background: var(--danger); }
+  .camera-placeholder { color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; }
+  .setup-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; gap: 12px; flex-wrap: wrap; }
+  .consent-note {
+    font-size: 12px; color: var(--text-dim); line-height: 1.5; max-width: 520px;
+  }
+  .consent-note b { color: var(--text); }
+
+  /* ------------ Test screen ------------ */
+  .test-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+  .progress-wrap { flex: 1; max-width: 420px; min-width: 220px; }
+  .progress-label { font-size: 11px; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .progress { height: 6px; background: var(--surface); border-radius: 100px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0%; transition: width .4s ease; }
+  .timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 100px;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .timer.warn { color: var(--warn); border-color: rgba(255,181,71,0.3); }
+  .timer.danger { color: var(--danger); border-color: rgba(255,90,122,0.3); }
+  .timer .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.2s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .puzzle-card { padding: 32px; }
+  .puzzle-tag {
+    display: inline-block; font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+    padding: 5px 10px; border-radius: 100px;
+    background: rgba(0,228,168,0.08); margin-bottom: 14px;
+  }
+  .puzzle-card h2 { font-size: 24px; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .puzzle-card .instruction { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+  .puzzle-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+  .stage-visual {
+    background: radial-gradient(circle at 50% 40%, rgba(124,92,255,0.10), transparent 65%);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    min-height: 360px; display: grid; place-items: center;
+  }
+  .stage-visual canvas { max-width: 100%; }
+  .options-grid { display: grid; gap: 12px; }
+  .options-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .option {
+    position: relative; cursor: pointer;
+    background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 18px;
+    transition: all .18s ease;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 80px;
+    font-weight: 600; font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .option:hover { border-color: var(--accent-2); background: #222b48; transform: translateY(-1px); }
+  .option.selected { border-color: var(--accent); background: rgba(0,228,168,0.08); box-shadow: 0 0 0 3px rgba(0,228,168,0.12); }
+  .option .tag { position: absolute; top: 8px; left: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dimmer); }
+  .option canvas { max-width: 100%; max-height: 140px; }
+
+  .test-footer { display: flex; justify-content: space-between; margin-top: 24px; }
+
+  /* ------------ Camera HUD (durante test) ------------ */
+  .cam-hud {
+    position: fixed; bottom: 20px; right: 20px; z-index: 80;
+    width: 240px; border-radius: 16px; overflow: hidden;
+    background: rgba(15, 20, 34, 0.92);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    transition: all .3s ease;
+  }
+  .cam-hud.hidden { display: none; }
+  .cam-hud.collapsed { width: 44px; height: 44px; border-radius: 50%; }
+  .cam-hud.collapsed .cam-body { display: none; }
+  .cam-hud.collapsed .cam-toggle { position: static; width: 100%; height: 100%; }
+  .cam-video-wrap {
+    position: relative; aspect-ratio: 4/3; background: #000;
+  }
+  .cam-video-wrap video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .cam-overlay { position: absolute; top: 8px; left: 8px; font-size: 10px; padding: 4px 8px; border-radius: 100px; background: rgba(0,0,0,0.6); display: flex; align-items: center; gap: 6px; backdrop-filter: blur(6px); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; }
+  .cam-overlay .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--danger); }
+  .cam-overlay.ok .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .cam-toggle {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; display: grid; place-items: center;
+    font-size: 14px; transition: all .2s ease;
+  }
+  .cam-toggle:hover { background: rgba(0,0,0,0.8); }
+  .cam-body { padding: 12px 14px; }
+  .cam-body .title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .hud-bar { margin-bottom: 10px; }
+  .hud-bar .lab { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+  .hud-bar .lab b { font-variant-numeric: tabular-nums; color: var(--text); }
+  .hud-bar .track { height: 4px; border-radius: 100px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .hud-bar .fill { height: 100%; border-radius: 100px; transition: width .4s ease; }
+  .hud-bar.focus .fill { background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+  .hud-bar.calm .fill { background: linear-gradient(90deg, #4ddbff, var(--accent)); }
+  .hud-bar.stress .fill { background: linear-gradient(90deg, var(--warn), var(--danger)); }
+
+  /* ------------ Result screen ------------ */
+  .result-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+  .iq-card { padding: 36px; position: relative; overflow: hidden; }
+  .iq-card::before {
+    content:''; position: absolute; inset: -40%;
+    background: radial-gradient(circle at 30% 30%, rgba(0,228,168,0.12), transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(124,92,255,0.14), transparent 40%);
+    pointer-events: none;
+  }
+  .iq-card > * { position: relative; }
+  .iq-label { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+  .iq-score {
+    font-size: 110px; font-weight: 700; line-height: 1; letter-spacing: -0.05em;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  .iq-sub { margin-top: 10px; font-size: 15px; color: var(--text-dim); }
+  .iq-sub b { color: var(--text); }
+  .iq-classification {
+    margin-top: 20px; display: inline-flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 100px;
+    border: 1px solid var(--border); font-size: 13px; background: var(--surface-2);
+  }
+  .iq-classification .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .bell-card { padding: 28px; }
+  .bell-card h3, .stats-card h3, .breakdown-card h3, .behavior-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.01em; }
+  .bell-card p { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 20px; }
+  .stat { padding: 18px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+  .stat .k { font-size: 11px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+  .stat .v { font-size: 24px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat .v small { font-size: 12px; color: var(--text-dim); font-weight: 500; margin-left: 4px; }
+  .breakdown-card, .behavior-card { padding: 28px; margin-top: 20px; }
+  .bars { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+  .bar-row { display: grid; grid-template-columns: 170px 1fr 44px; gap: 12px; align-items: center; font-size: 13px; }
+  .bar-row .label { color: var(--text-dim); }
+  .bar-row .track { height: 8px; border-radius: 100px; background: var(--surface-2); overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s ease; }
+  .bar-row .val { font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
+  .behavior-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }
+  .b-metric { padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+  .b-metric .k { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .b-metric .v { font-size: 20px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .b-metric .v small { font-size: 11px; color: var(--text-dim); font-weight: 500; margin-left: 4px; }
+  .time-chart { width: 100%; height: 110px; display: block; }
+  .result-actions { display: flex; gap: 12px; margin-top: 24px; justify-content: center; flex-wrap: wrap; }
+
+  /* ------------ Certificate screen ------------ */
+  .cert-wrap { display: grid; place-items: center; padding: 24px 0; }
+  .certificate {
+    width: 100%; max-width: 880px; aspect-ratio: 1.414/1;
+    background: linear-gradient(140deg, #faf6ec, #ebe1c8);
+    color: #1a1410; position: relative;
+    border-radius: 6px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.05);
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    overflow: hidden;
+  }
+  .cert-border {
+    position: absolute; inset: 24px;
+    border: 2px solid #6d5a2e;
+    padding: 40px 50px;
+    display: flex; flex-direction: column;
+  }
+  .cert-border::before {
+    content:''; position: absolute; inset: 6px;
+    border: 1px solid rgba(109, 90, 46, 0.4);
+    pointer-events: none;
+  }
+  .cert-corner {
+    position: absolute; width: 30px; height: 30px;
+    border: 2px solid #8b6f2e;
+  }
+  .cert-corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+  .cert-corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+  .cert-corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+  .cert-corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+  .cert-header { text-align: center; margin-bottom: 24px; }
+  .cert-seal-row { display: flex; justify-content: center; margin-bottom: 8px; }
+  .cert-seal {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 2px solid #6d5a2e; display: grid; place-items: center;
+    font-family: 'Inter', sans-serif; font-weight: 700;
+    background: radial-gradient(circle, #f7efd6, #e8d9a8);
+    letter-spacing: -0.02em; font-size: 18px; color: #6d5a2e;
+    position: relative;
+  }
+  .cert-seal::before { content:''; position: absolute; inset: 3px; border-radius: 50%; border: 1px dashed rgba(109,90,46,0.5); }
+  .cert-org { font-size: 10px; letter-spacing: 0.32em; color: #6d5a2e; font-family: 'Inter', sans-serif; font-weight: 600; text-transform: uppercase; margin-top: 8px; }
+  .cert-title {
+    font-size: 38px; font-weight: 400; letter-spacing: 0.02em;
+    color: #1a1410; margin-top: 14px; line-height: 1.1;
+    font-style: italic;
+  }
+  .cert-subtitle { font-size: 13px; letter-spacing: 0.24em; color: #6d5a2e; margin-top: 6px; font-family: 'Inter', sans-serif; text-transform: uppercase; }
+  .cert-body { text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cert-intro { font-size: 14px; color: #4a3a26; font-family: 'Inter', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .cert-name {
+    font-size: 44px; font-weight: 600; letter-spacing: 0.01em;
+    color: #1a1410; padding: 6px 40px;
+    border-bottom: 1px solid rgba(109,90,46,0.3);
+    display: inline-block;
+    margin-bottom: 18px; font-style: italic;
+  }
+  .cert-text { font-size: 14px; color: #4a3a26; line-height: 1.6; max-width: 620px; margin: 0 auto 24px; font-family: 'Inter', sans-serif; }
+  .cert-score-row { display: flex; justify-content: center; align-items: center; gap: 50px; margin: 14px 0 18px; }
+  .cert-score { text-align: center; }
+  .cert-score .lab { font-size: 10px; letter-spacing: 0.24em; color: #6d5a2e; font-family: 'Inter', sans-serif; text-transform: uppercase; margin-bottom: 6px; }
+  .cert-score .val {
+    font-family: 'Inter', sans-serif; font-weight: 700;
+    font-size: 42px; color: #1a1410;
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .cert-score .val.pct { font-size: 28px; color: #6d5a2e; }
+  .cert-score .cls { font-size: 13px; color: #4a3a26; font-family: 'Inter', sans-serif; margin-top: 4px; letter-spacing: 0.04em; }
+  .cert-divider { width: 60px; height: 1px; background: rgba(109,90,46,0.4); margin: 10px auto; }
+  .cert-footer {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;
+    align-items: end; margin-top: auto;
+    font-family: 'Inter', sans-serif;
+  }
+  .cert-field { text-align: center; }
+  .cert-field .lab { font-size: 9px; letter-spacing: 0.2em; color: #6d5a2e; text-transform: uppercase; margin-top: 4px; }
+  .cert-field .val { font-size: 13px; color: #1a1410; font-weight: 500; }
+  .cert-field .val.mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; font-size: 12px; }
+  .cert-sig-line { height: 1px; background: #6d5a2e; margin-bottom: 4px; }
+  .cert-watermark {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    pointer-events: none; opacity: 0.04; font-size: 200px; font-weight: 800;
+    color: #1a1410; font-family: 'Inter', sans-serif; letter-spacing: -0.05em;
+    user-select: none;
+  }
+  .cert-actions { display: flex; justify-content: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+
+  /* ------------ Print ------------ */
+  @media print {
+    @page { size: landscape; margin: 0; }
+    body { background: white; }
+    .topbar, .test-footer, .cam-hud, .cert-actions,
+    .screen:not(#screen-certificate) { display: none !important; }
+    main { padding: 0; max-width: 100%; }
+    .cert-wrap { padding: 0; }
+    .certificate { box-shadow: none; max-width: 100%; border-radius: 0; }
+  }
+
+  /* ------------ Responsive ------------ */
+  @media (max-width: 920px) {
+    .hero, .puzzle-stage, .result-grid, .setup-grid { grid-template-columns: 1fr; }
+    .features, .stats-row, .behavior-grid { grid-template-columns: 1fr 1fr; }
+    .iq-score { font-size: 84px; }
+    .certificate { aspect-ratio: auto; }
+    .cert-border { padding: 24px 26px; }
+    .cert-title { font-size: 26px; }
+    .cert-name { font-size: 28px; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 24px 16px 60px; }
+    .topbar { padding: 14px 16px; }
+    .features, .stats-row, .behavior-grid { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 110px 1fr 40px; font-size: 12px; }
+    .puzzle-card { padding: 20px; }
+    .cam-hud { width: 160px; bottom: 12px; right: 12px; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <input type="text" id="search" placeholder="Buscar...">
-            <div class="buttons">
-                <button id="newFile" title="Nuevo Archivo"><i class="fas fa-file-alt"></i></button>
-                <button id="openFile" title="Abrir Archivo"><i class="fas fa-folder-open"></i></button>
-                <button id="save" title="Guardar"><i class="fas fa-save"></i></button>
-                <button id="zoomIn" title="Agrandar texto"><i class="fas fa-search-plus"></i></button>
-                <button id="zoomOut" title="Reducir texto"><i class="fas fa-search-minus"></i></button>
-                <button id="undo" title="Deshacer"><i class="fas fa-undo"></i></button>
-                <button id="redo" title="Rehacer"><i class="fas fa-redo"></i></button>
-                <button id="copy" title="Copiar"><i class="fas fa-copy"></i></button>
-                <button id="paste" title="Pegar"><i class="fas fa-paste"></i></button>
-                <button id="format" title="Formatear código"><i class="fas fa-align-left"></i></button>
-                <button id="themeToggle" title="Cambiar Tema"><i class="fas fa-paint-brush"></i></button>
-                <button id="clear" title="Limpiar Editor"><i class="fas fa-trash-alt"></i></button>
-            </div>
-        </header>
-        <div class="main-content">
-            <div class="tabs">
-                <div class="tab-buttons">
-                    <div class="tab-button active" data-tab="tab1">
-                        Archivo 1
-                        <span class="tab-close"><i class="fas fa-times"></i></span>
-                    </div>
-                </div>
-                <div class="tab-content">
-                    <div id="tab1" class="tab-pane active">
-                        <div class="editor-container">
-                            <textarea id="codeEditor1"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="output-container">
-                <h2>Output</h2>
-                <div class="output-tabs">
-                    <button class="output-tab active" data-output="outputCode">Código</button>
-                    <button class="output-tab" data-output="outputTerminal">Terminal</button>
-                </div>
-                <div class="output-content">
-                    <pre id="outputCode" class="output-pane active"></pre>
-                    <pre id="outputTerminal" class="output-pane"></pre>
-                </div>
-            </div>
-        </div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-name">cognis<span class="k">·</span>can</div>
+  </div>
+  <div class="meta-chip">Evaluación Cognitiva · v3.0</div>
+</header>
+
+<main>
+
+<!-- ================== PANTALLA INICIO ================== -->
+<section id="screen-start" class="screen active">
+  <div class="hero">
+    <div>
+      <h1>Evaluación profesional de <span class="grad">coeficiente intelectual</span> con análisis conductual.</h1>
+      <p class="lede">
+        21 puzzles isométricos de dificultad progresiva combinados con un módulo
+        de visión computacional que analiza tu atención, calma y concentración
+        en tiempo real mediante deep learning facial. Resultados normalizados
+        sobre la distribución estándar N(100, 15).
+      </p>
+      <div class="hero-meta">
+        <span class="chip"><b>21</b> ítems</span>
+        <span class="chip"><b>~20</b> min</span>
+        <span class="chip"><b>σ=15</b> normalizado</span>
+        <span class="chip"><b>IA</b> conductual</span>
+        <span class="chip"><b>Certificado</b> oficial</span>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="btn-start">Comenzar evaluación →</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">Metodología</button>
+      </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/selection/active-line.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/matchbrackets.min.js"></script>
-    <script src="scripts.js"></script>
+    <div class="hero-visual">
+      <canvas id="hero-canvas"></canvas>
+      <div class="hero-legend"><div>// preview.iso</div><div>render · 60fps</div></div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="icon">◇</div>
+      <h3>Razonamiento espacial</h3>
+      <p>Rotaciones mentales, cálculo de volumen y vistas ortogonales.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">∞</div>
+      <h3>Lógica inductiva</h3>
+      <p>Series, patrones y matrices con reglas combinadas.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">◐</div>
+      <h3>Memoria de trabajo</h3>
+      <p>Mantén y manipula configuraciones en paralelo.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">◉</div>
+      <h3>Análisis conductual</h3>
+      <p>Visión computacional para atención, calma y foco.</p>
+    </div>
+  </div>
+
+  <div id="how-it-works" class="info-note">
+    <b>Metodología.</b> La puntuación bruta pondera cada ítem por su dificultad
+    empírica (1–5) y aplica un factor de tiempo residual. El resultado se
+    proyecta sobre N(100, 15) mediante la inversa del CDF gaussiano. El módulo
+    conductual utiliza una red neuronal convolucional (<b>TinyYOLO + FaceExpressionNet</b>)
+    que se ejecuta localmente en tu navegador — ningún frame abandona tu
+    dispositivo. La estimación carece de valor clínico.
+  </div>
+</section>
+
+<!-- ================== PANTALLA SETUP ================== -->
+<section id="screen-setup" class="screen">
+  <h2 style="font-size:28px; letter-spacing:-0.02em; margin-bottom:8px;">Configuración previa</h2>
+  <p style="color:var(--text-dim); font-size:14px; margin-bottom:4px;">Completa los dos pasos antes de iniciar el test.</p>
+  <div class="setup-grid">
+    <div class="card setup-card">
+      <h3>1 · Tus datos</h3>
+      <p class="sub">Tu nombre aparecerá en el certificado oficial al final del test.</p>
+      <div class="field-group">
+        <div>
+          <label class="field-label">Nombre completo</label>
+          <input type="text" class="input" id="input-name" placeholder="Ej. María González" maxlength="60" />
+        </div>
+        <div>
+          <label class="field-label">Edad (opcional)</label>
+          <input type="number" class="input" id="input-age" placeholder="25" min="10" max="99" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card setup-card">
+      <h3>2 · Análisis conductual (opcional)</h3>
+      <p class="sub">
+        Activa la cámara para habilitar el análisis en tiempo real de atención
+        y composure. Procesamiento 100% local vía TensorFlow.js.
+      </p>
+      <div class="camera-preview-box" id="camera-preview-box">
+        <div class="camera-placeholder" id="camera-placeholder">
+          La cámara no está activada.<br>
+          <span style="font-size:11px; color:var(--text-dimmer);">Puedes continuar sin activarla.</span>
+        </div>
+        <video id="setup-video" autoplay muted playsinline style="display:none;"></video>
+        <div class="camera-status" id="camera-status" style="display:none;">
+          <span class="dot"></span>
+          <span id="camera-status-text">conectando...</span>
+        </div>
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn btn-ghost" id="btn-enable-cam" style="font-size:13px; padding:10px 14px;">
+          Activar cámara
+        </button>
+        <button class="btn btn-ghost" id="btn-disable-cam" style="display:none; font-size:13px; padding:10px 14px;">
+          Desactivar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-actions">
+    <div class="consent-note">
+      <b>Privacidad.</b> Los frames de la cámara son procesados únicamente en
+      memoria local. No se almacenan, transmiten ni envían a servidores externos.
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" id="btn-setup-back">← Volver</button>
+      <button class="btn btn-primary" id="btn-setup-continue">Iniciar test →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================== PANTALLA TEST ================== -->
+<section id="screen-test" class="screen">
+  <div class="test-head">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="progress-text">Ítem 1 de 21</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+    <div class="timer" id="timer">
+      <span class="dot"></span>
+      <span id="timer-text">00:30</span>
+    </div>
+  </div>
+
+  <div class="card puzzle-card">
+    <div class="puzzle-tag" id="puzzle-tag">Ítem 1 · Razonamiento espacial</div>
+    <h2 id="puzzle-title">Cuenta los cubos</h2>
+    <p class="instruction" id="puzzle-instruction">Observa la estructura y selecciona la opción correcta.</p>
+    <div class="puzzle-stage">
+      <div class="stage-visual"><canvas id="puzzle-canvas" width="480" height="380"></canvas></div>
+      <div><div class="options-grid cols-2" id="options-grid"></div></div>
+    </div>
+  </div>
+
+  <div class="test-footer">
+    <button class="btn btn-ghost" id="btn-abort">Abandonar</button>
+    <button class="btn btn-primary" id="btn-next" disabled>Siguiente →</button>
+  </div>
+</section>
+
+<!-- Camera HUD (flotante) -->
+<div class="cam-hud hidden" id="cam-hud">
+  <div class="cam-video-wrap">
+    <video id="hud-video" autoplay muted playsinline></video>
+    <div class="cam-overlay" id="cam-overlay"><span class="dot"></span><span id="cam-overlay-text">analizando</span></div>
+    <button class="cam-toggle" id="cam-toggle" title="Minimizar">−</button>
+  </div>
+  <div class="cam-body">
+    <div class="title">Análisis en tiempo real</div>
+    <div class="hud-bar focus">
+      <div class="lab"><span>Foco</span><b id="hud-focus">—</b></div>
+      <div class="track"><div class="fill" id="hud-focus-bar" style="width:0%"></div></div>
+    </div>
+    <div class="hud-bar calm">
+      <div class="lab"><span>Calma</span><b id="hud-calm">—</b></div>
+      <div class="track"><div class="fill" id="hud-calm-bar" style="width:0%"></div></div>
+    </div>
+    <div class="hud-bar stress">
+      <div class="lab"><span>Tensión</span><b id="hud-stress">—</b></div>
+      <div class="track"><div class="fill" id="hud-stress-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================== PANTALLA RESULTADO ================== -->
+<section id="screen-result" class="screen">
+  <div class="result-grid">
+    <div class="card iq-card">
+      <div class="iq-label">Tu coeficiente intelectual estimado</div>
+      <div class="iq-score" id="iq-score">0</div>
+      <div class="iq-sub">Percentil <b id="iq-percentile">—</b> · Superas al <b id="iq-above">—</b> de la población</div>
+      <div class="iq-classification"><span class="dot" id="iq-dot"></span><span id="iq-class">—</span></div>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="k">Aciertos</div>
+          <div class="v" id="stat-correct">0<small>/ 21</small></div>
+        </div>
+        <div class="stat">
+          <div class="k">Precisión</div>
+          <div class="v" id="stat-accuracy">0<small>%</small></div>
+        </div>
+        <div class="stat">
+          <div class="k">Tiempo total</div>
+          <div class="v" id="stat-time">0<small>s</small></div>
+        </div>
+        <div class="stat">
+          <div class="k">Velocidad</div>
+          <div class="v" id="stat-speed">0<small>s/ítem</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bell-card">
+      <h3>Distribución poblacional</h3>
+      <p>Curva normal estándar (μ=100, σ=15). Tu posición aparece marcada.</p>
+      <svg id="bell-curve" viewBox="0 0 400 220" style="width:100%; height:auto; display:block;"></svg>
+    </div>
+  </div>
+
+  <div class="card breakdown-card">
+    <h3>Desglose por área cognitiva</h3>
+    <div class="bars" id="bars-breakdown"></div>
+  </div>
+
+  <div class="card breakdown-card">
+    <h3>Tiempo por ítem</h3>
+    <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Duración empleada en cada puzzle comparada con el límite disponible.</p>
+    <svg id="time-chart" class="time-chart" viewBox="0 0 600 110"></svg>
+  </div>
+
+  <div class="card behavior-card" id="behavior-card">
+    <h3>Análisis conductual</h3>
+    <p style="font-size:12px; color:var(--text-dim); margin-bottom:8px;">Indicadores obtenidos por visión computacional durante la sesión.</p>
+    <div class="behavior-grid" id="behavior-grid"></div>
+  </div>
+
+  <div class="result-actions">
+    <button class="btn btn-primary" id="btn-certificate">Generar certificado oficial ✦</button>
+    <button class="btn btn-ghost" id="btn-retry">Repetir evaluación</button>
+    <button class="btn btn-ghost" id="btn-share">Copiar resultado</button>
+  </div>
+
+  <div class="info-note" style="margin-top:24px;">
+    <b>Aviso.</b> Los resultados son una estimación estadística basada en un
+    test breve. Una evaluación clínica requiere baterías estandarizadas
+    (WAIS-IV, Stanford-Binet) administradas por un profesional cualificado.
+  </div>
+</section>
+
+<!-- ================== PANTALLA CERTIFICADO ================== -->
+<section id="screen-certificate" class="screen">
+  <div class="cert-wrap">
+    <div class="certificate" id="certificate">
+      <div class="cert-border">
+        <div class="cert-corner tl"></div>
+        <div class="cert-corner tr"></div>
+        <div class="cert-corner bl"></div>
+        <div class="cert-corner br"></div>
+        <div class="cert-watermark">COGNISCAN</div>
+
+        <div class="cert-header">
+          <div class="cert-seal-row"><div class="cert-seal">CG</div></div>
+          <div class="cert-org">Instituto de Evaluación Cognitiva Digital</div>
+          <div class="cert-title">Certificado de Coeficiente Intelectual</div>
+          <div class="cert-subtitle">Evaluación Estandarizada · Serie CG-3</div>
+        </div>
+
+        <div class="cert-body">
+          <div class="cert-intro">Se otorga el presente certificado a</div>
+          <div class="cert-name" id="cert-name">Usuario Anónimo</div>
+          <p class="cert-text">
+            por haber completado la evaluación estandarizada Cogniscan, compuesta
+            por 21 ítems de razonamiento espacial, lógica inductiva y memoria de
+            trabajo, con análisis conductual asistido por visión computacional.
+          </p>
+          <div class="cert-divider"></div>
+          <div class="cert-score-row">
+            <div class="cert-score">
+              <div class="lab">Coeficiente Intelectual</div>
+              <div class="val" id="cert-iq">100</div>
+              <div class="cls" id="cert-class">Promedio</div>
+            </div>
+            <div class="cert-score">
+              <div class="lab">Percentil</div>
+              <div class="val pct" id="cert-pct">50</div>
+              <div class="cls">sobre N(100, 15)</div>
+            </div>
+            <div class="cert-score">
+              <div class="lab">Puntuación</div>
+              <div class="val pct" id="cert-acc">0</div>
+              <div class="cls">precisión ponderada</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cert-footer">
+          <div class="cert-field">
+            <div class="val" id="cert-date">—</div>
+            <div class="lab">Fecha de emisión</div>
+          </div>
+          <div class="cert-field">
+            <div class="cert-sig-line"></div>
+            <div class="val" style="font-style:italic;">Dr. A. Vantari</div>
+            <div class="lab">Director Académico</div>
+          </div>
+          <div class="cert-field">
+            <div class="val mono" id="cert-code">CG-XXXX-XXXX</div>
+            <div class="lab">Código de verificación</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cert-actions">
+      <button class="btn btn-primary" id="btn-print">Imprimir / Guardar PDF</button>
+      <button class="btn btn-ghost" id="btn-back-result">← Volver a resultados</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ================================================================
+   RENDERIZADO ISOMÉTRICO
+   ================================================================ */
+const ISO = { S: 28 };
+
+function lighten(hex, amt) {
+  const c = parseInt(hex.replace('#',''), 16);
+  let r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
+  r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+  return `rgb(${r},${g},${b})`;
+}
+function darken(hex, amt) {
+  const c = parseInt(hex.replace('#',''), 16);
+  let r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
+  r = Math.max(0, r - amt); g = Math.max(0, g - amt); b = Math.max(0, b - amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawCube(ctx, gx, gy, gz, originX, originY, color='#7c5cff', opts={}) {
+  const S = opts.size || ISO.S;
+  const cx = originX + (gx - gy) * S;
+  const cy = originY + (gx + gy) * S / 2 - gz * S;
+  const top = [[cx, cy - S*0.5],[cx + S, cy],[cx, cy + S*0.5],[cx - S, cy]];
+  const leftFace = [[cx - S, cy],[cx, cy + S*0.5],[cx, cy + S*1.5],[cx - S, cy + S]];
+  const rightFace = [[cx, cy + S*0.5],[cx + S, cy],[cx + S, cy + S],[cx, cy + S*1.5]];
+  const stroke = opts.stroke || 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = opts.lineWidth || 1.2;
+  ctx.lineJoin = 'round';
+  const drawPoly = (poly, fill) => {
+    ctx.beginPath();
+    ctx.moveTo(poly[0][0], poly[0][1]);
+    for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = stroke; ctx.stroke();
+  };
+  drawPoly(rightFace, darken(color, 22));
+  drawPoly(leftFace, darken(color, 42));
+  drawPoly(top, lighten(color, 10));
+  if (opts.highlight) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,228,168,0.9)'; ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(top[0][0], top[0][1]);
+    for (let i = 1; i < top.length; i++) ctx.lineTo(top[i][0], top[i][1]);
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawGhostCube(ctx, gx, gy, gz, originX, originY, opts={}) {
+  const S = opts.size || ISO.S;
+  const cx = originX + (gx - gy) * S;
+  const cy = originY + (gx + gy) * S / 2 - gz * S;
+  ctx.save();
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = 'rgba(255,90,122,0.45)'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - S*0.5);
+  ctx.lineTo(cx + S, cy);
+  ctx.lineTo(cx, cy + S*0.5);
+  ctx.lineTo(cx - S, cy);
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+function renderStructure(canvas, cubes, opts={}) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.width;
+  const h = canvas.clientHeight || canvas.height;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const sorted = [...cubes].sort((a,b) => {
+    const da = (a.gx + a.gy); const db = (b.gx + b.gy);
+    if (da !== db) return da - db;
+    return a.gz - b.gz;
+  });
+
+  const S = opts.size || ISO.S;
+  const allPoints = [];
+  const allCubes = [...cubes, ...(opts.ghosts || [])];
+  allCubes.forEach(c => {
+    const cx = (c.gx - c.gy) * S;
+    const cy = (c.gx + c.gy) * S / 2 - c.gz * S;
+    allPoints.push([cx - S, cy - S*0.5], [cx + S, cy + S*1.5]);
+  });
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  allPoints.forEach(([x,y]) => {
+    if (x<minX) minX=x; if (x>maxX) maxX=x;
+    if (y<minY) minY=y; if (y>maxY) maxY=y;
+  });
+  const offsetX = w/2 - (minX + maxX)/2;
+  const offsetY = h/2 - (minY + maxY)/2;
+
+  sorted.forEach(c => {
+    drawCube(ctx, c.gx, c.gy, c.gz, offsetX, offsetY,
+      c.color || opts.color || '#7c5cff', { size: S, highlight: c.highlight });
+  });
+  if (opts.ghosts) opts.ghosts.forEach(g => drawGhostCube(ctx, g.gx, g.gy, g.gz, offsetX, offsetY, { size: S }));
+}
+
+function renderTopView(canvas, cubes) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.width;
+  const h = canvas.clientHeight || canvas.height;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const map = new Map();
+  cubes.forEach(c => {
+    const k = `${c.gx},${c.gy}`;
+    if (!map.has(k) || map.get(k) < c.gz) map.set(k, c.gz);
+  });
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  map.forEach((z,k) => {
+    const [x,y] = k.split(',').map(Number);
+    if (x<minX) minX=x; if (x>maxX) maxX=x;
+    if (y<minY) minY=y; if (y>maxY) maxY=y;
+  });
+  const cw = maxX - minX + 1, ch = maxY - minY + 1;
+  const cell = Math.min((w - 40) / cw, (h - 40) / ch, 38);
+  const ox = (w - cell * cw) / 2;
+  const oy = (h - cell * ch) / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i <= cw; i++) { ctx.beginPath(); ctx.moveTo(ox + i*cell, oy); ctx.lineTo(ox + i*cell, oy + ch*cell); ctx.stroke(); }
+  for (let j = 0; j <= ch; j++) { ctx.beginPath(); ctx.moveTo(ox, oy + j*cell); ctx.lineTo(ox + cw*cell, oy + j*cell); ctx.stroke(); }
+  map.forEach((z, k) => {
+    const [x,y] = k.split(',').map(Number);
+    const gx = x - minX, gy = y - minY;
+    ctx.fillStyle = `rgba(${124},${92 + z*20},${255}, ${0.55 + z * 0.15})`;
+    ctx.fillRect(ox + gx*cell + 2, oy + gy*cell + 2, cell - 4, cell - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = '600 12px Inter, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(z + 1, ox + gx*cell + cell/2, oy + gy*cell + cell/2);
+  });
+}
+
+function renderFrontView(canvas, cubes) {
+  // Project to (x, z): for each (x,z), any cube across y
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const map = new Set();
+  cubes.forEach(c => map.add(`${c.gx},${c.gz}`));
+  let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+  map.forEach(k => {
+    const [x,z] = k.split(',').map(Number);
+    if (x<minX) minX=x; if (x>maxX) maxX=x;
+    if (z<minZ) minZ=z; if (z>maxZ) maxZ=z;
+  });
+  const cw = maxX - minX + 1, ch = maxZ - minZ + 1;
+  const cell = Math.min((w - 30) / cw, (h - 30) / ch, 32);
+  const ox = (w - cell * cw) / 2;
+  const oy = (h - cell * ch) / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i <= cw; i++) { ctx.beginPath(); ctx.moveTo(ox + i*cell, oy); ctx.lineTo(ox + i*cell, oy + ch*cell); ctx.stroke(); }
+  for (let j = 0; j <= ch; j++) { ctx.beginPath(); ctx.moveTo(ox, oy + j*cell); ctx.lineTo(ox + cw*cell, oy + j*cell); ctx.stroke(); }
+  map.forEach(k => {
+    const [x,z] = k.split(',').map(Number);
+    const gx = x - minX;
+    const gy = (maxZ - z); // invert z for display
+    ctx.fillStyle = 'rgba(124,92,255,0.7)';
+    ctx.strokeStyle = 'rgba(124,92,255,1)';
+    ctx.fillRect(ox + gx*cell + 2, oy + gy*cell + 2, cell - 4, cell - 4);
+    ctx.strokeRect(ox + gx*cell + 2, oy + gy*cell + 2, cell - 4, cell - 4);
+  });
+}
+
+/* ================================================================
+   PUZZLES (15)
+   ================================================================ */
+const makeRow    = (n, y=0, z=0) => Array.from({length: n}, (_,i) => ({gx:i, gy:y, gz:z}));
+const makeSquare = (n, z=0) => { const r=[]; for(let x=0;x<n;x++) for(let y=0;y<n;y++) r.push({gx:x,gy:y,gz:z}); return r; };
+
+const PUZZLES = [
+  // ---------- 1. Contar cubos visibles ----------
+  {
+    id: 1, area: 'Razonamiento espacial', difficulty: 1, weight: 1, timeLimit: 30,
+    title: 'Cuenta los cubos',
+    instruction: 'Observa la estructura y selecciona el número total de cubos que la forman.',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:0,gy:0,gz:1},
+    ]),
+    options: ['4', '5', '6', '7'], answer: 1,
+  },
+  // ---------- 2. Secuencia n² ----------
+  {
+    id: 2, area: 'Lógica inductiva', difficulty: 2, weight: 1.2, timeLimit: 45,
+    title: 'Continúa la secuencia',
+    instruction: 'Cada figura crece siguiendo una regla. ¿Cuál corresponde a la siguiente posición?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 14;
+      const draw = (cubes, offX, offY) => {
+        const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+        sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, offX, offY, '#7c5cff', {size:S}));
+      };
+      draw([{gx:0,gy:0,gz:0}], w*0.18, h*0.55);
+      draw(makeSquare(2), w*0.40, h*0.55);
+      draw(makeSquare(3), w*0.70, h*0.55);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.font = '600 11px JetBrains Mono, monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ['n=1','n=2','n=3','n=4 ?'].forEach((t,i) => {
+        const xs = [w*0.18, w*0.40, w*0.70, w*0.90];
+        ctx.fillText(t, xs[i], h*0.92);
+      });
+      ctx.fillStyle = 'rgba(124,92,255,0.4)';
+      ctx.font = '700 64px Inter, sans-serif';
+      ctx.fillText('?', w*0.90, h*0.55);
+    },
+    optionShapes: [
+      makeSquare(4),
+      makeSquare(3).concat([{gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1}]),
+      makeRow(4),
+      (()=> { const a = makeSquare(3); a.push({gx:3,gy:0,gz:0},{gx:3,gy:1,gz:0},{gx:3,gy:2,gz:0}); return a; })(),
+    ],
+    answer: 0,
+  },
+  // ---------- 3. Contar con ocultos ----------
+  {
+    id: 3, area: 'Razonamiento espacial', difficulty: 3, weight: 1.6, timeLimit: 50,
+    title: 'Cuenta TODOS los cubos',
+    instruction: 'Algunos cubos sostienen a otros. Cuenta la totalidad, incluidos los que puedas deducir aunque no sean totalmente visibles.',
+    render: (c) => {
+      const cubes = [];
+      for (let x=0;x<3;x++) for (let y=0;y<3;y++) cubes.push({gx:x,gy:y,gz:0});
+      for (let x=0;x<2;x++) for (let y=0;y<2;y++) cubes.push({gx:x,gy:y,gz:1});
+      cubes.push({gx:0,gy:0,gz:2});
+      renderStructure(c, cubes);
+    },
+    options: ['12', '13', '14', '16'], answer: 2,
+  },
+  // ---------- 4. Rotación L-tromino ----------
+  {
+    id: 4, area: 'Rotación mental', difficulty: 3, weight: 1.6, timeLimit: 55,
+    title: '¿Qué figura es la misma rotada?',
+    instruction: 'Selecciona la figura idéntica a la de referencia, pero en otra orientación (sin espejar).',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:1,gz:0},
+    ], {color:'#00e4a8'}),
+    optionShapes: [
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:1,gy:2,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:1,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:1,gy:1,gz:0},{gx:2,gy:1,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:1,gy:1,gz:0}],
+    ],
+    answer: 0,
+  },
+  // ---------- 5. Completar 2x2x2 ----------
+  {
+    id: 5, area: 'Visualización 3D', difficulty: 3, weight: 1.6, timeLimit: 55,
+    title: 'Completa la estructura',
+    instruction: 'Falta una pieza para formar un cubo sólido de 2×2×2. Selecciónala.',
+    render: (c) => {
+      const cubes = [];
+      for (let x=0;x<2;x++) for (let y=0;y<2;y++) for (let z=0;z<2;z++) {
+        if (!(x===1 && y===0 && z===1)) cubes.push({gx:x,gy:y,gz:z});
+      }
+      renderStructure(c, cubes, {ghosts:[{gx:1,gy:0,gz:1}]});
+    },
+    optionShapes: [
+      [{gx:0,gy:0,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:0,gy:0,gz:1}],
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:0,gz:0}],
+    ],
+    answer: 0,
+  },
+  // ---------- 6. Vista cenital ----------
+  {
+    id: 6, area: 'Razonamiento espacial', difficulty: 4, weight: 1.9, timeLimit: 60,
+    title: '¿Cuál es la vista cenital?',
+    instruction: 'La estructura se observa desde arriba. Cada número indica la altura (cubos apilados) en esa celda. Elige la vista correcta.',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},
+      {gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1},
+      {gx:0,gy:0,gz:2},
+    ]),
+    optionShapes: [
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},
+       {gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:1,gz:0},{gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},{gx:2,gy:1,gz:0},{gx:2,gy:0,gz:1}],
+    ],
+    optionRenderer: 'top', answer: 0,
+  },
+  // ---------- 7. Matriz tower+base ----------
+  {
+    id: 7, area: 'Lógica inductiva', difficulty: 4, weight: 2.0, timeLimit: 75,
+    title: 'Completa la matriz',
+    instruction: 'En cada fila, la altura máxima aumenta en 1 cubo. En cada columna, la base se amplía una unidad. ¿Qué figura completa la matriz 3×3?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 10;
+      const cellW = w / 3, cellH = h / 3;
+      const buildCell = (r, col) => {
+        const cubes = [];
+        for (let i=0; i<=col; i++) cubes.push({gx:i,gy:0,gz:0});
+        for (let z=1; z<=r; z++) cubes.push({gx:col,gy:0,gz:z});
+        return cubes;
+      };
+      for (let r=0;r<3;r++) {
+        for (let col=0;col<3;col++) {
+          if (r===2 && col===2) {
+            ctx.fillStyle = 'rgba(124,92,255,0.35)';
+            ctx.font = '700 38px Inter, sans-serif';
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText('?', cellW*col + cellW/2, cellH*r + cellH/2);
+            continue;
+          }
+          const cubes = buildCell(r, col);
+          const cx = cellW*col + cellW/2, cy = cellH*r + cellH*0.65;
+          const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+          sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, cx-S, cy, '#7c5cff', {size:S}));
+        }
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+      for (let i=1;i<3;i++){
+        ctx.beginPath(); ctx.moveTo(cellW*i, 0); ctx.lineTo(cellW*i, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, cellH*i); ctx.lineTo(w, cellH*i); ctx.stroke();
+      }
+    },
+    optionShapes: [
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:0,gz:1},{gx:2,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:0,gz:1}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:1,gy:0,gz:1},{gx:1,gy:0,gz:2}],
+    ],
+    answer: 0,
+  },
+  // ---------- 8. Volumen restante 3x3x3 ----------
+  {
+    id: 8, area: 'Memoria de trabajo', difficulty: 5, weight: 2.4, timeLimit: 80,
+    title: 'Encuentra el volumen restante',
+    instruction: 'Partiendo de un prisma sólido de 3×3×3, se han retirado los cubos marcados en rojo. ¿Cuántos cubos quedan en total?',
+    render: (c) => {
+      const cubes = [];
+      for (let x=0;x<3;x++) for (let y=0;y<3;y++) for (let z=0;z<3;z++) cubes.push({gx:x,gy:y,gz:z});
+      const removed = new Set(['2,0,2','2,2,2','0,0,2','1,1,2']);
+      const filtered = cubes.filter(c => !removed.has(`${c.gx},${c.gy},${c.gz}`));
+      const ghosts = [...removed].map(k => { const [gx,gy,gz] = k.split(',').map(Number); return {gx,gy,gz}; });
+      renderStructure(c, filtered, {ghosts});
+    },
+    options: ['21', '22', '23', '24'], answer: 2,
+  },
+  // ---------- 9. Vista frontal ----------
+  {
+    id: 9, area: 'Visualización 3D', difficulty: 4, weight: 2.0, timeLimit: 60,
+    title: '¿Cuál es la vista frontal?',
+    instruction: 'Proyecta mentalmente la estructura sobre el plano frontal (X-Z). Elige la silueta correcta.',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},
+      {gx:0,gy:0,gz:1},{gx:2,gy:0,gz:1},
+      {gx:0,gy:0,gz:2},
+    ]),
+    // Front projection (x, z): x=0 z=0,1,2; x=1 z=0; x=2 z=0,1
+    optionShapes: [
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:2,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1},{gx:2,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:0,gz:1},{gx:2,gy:0,gz:2}],
+    ],
+    optionRenderer: 'front', answer: 0,
+  },
+  // ---------- 10. Secuencia rotación + crecimiento ----------
+  {
+    id: 10, area: 'Lógica inductiva', difficulty: 4, weight: 2.1, timeLimit: 70,
+    title: 'Continúa la secuencia rotativa',
+    instruction: 'Cada paso añade un cubo y rota 90° alrededor del eje vertical. ¿Qué figura sigue?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 13;
+      const seq = [
+        [{gx:0,gy:0,gz:0}, {gx:1,gy:0,gz:0}],
+        [{gx:0,gy:0,gz:0}, {gx:0,gy:1,gz:0}, {gx:0,gy:2,gz:0}],
+        [{gx:0,gy:0,gz:0}, {gx:1,gy:0,gz:0}, {gx:2,gy:0,gz:0}, {gx:3,gy:0,gz:0}],
+      ];
+      const xs = [w*0.18, w*0.42, w*0.70];
+      seq.forEach((cubes, i) => {
+        const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+        sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, xs[i], h*0.55, '#7c5cff', {size:S}));
+      });
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.font = '600 11px JetBrains Mono, monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ['paso 1','paso 2','paso 3','paso 4 ?'].forEach((t,i) => {
+        const xx = [w*0.18, w*0.42, w*0.70, w*0.92];
+        ctx.fillText(t, xx[i], h*0.92);
+      });
+      ctx.fillStyle = 'rgba(124,92,255,0.4)';
+      ctx.font = '700 56px Inter, sans-serif';
+      ctx.fillText('?', w*0.92, h*0.55);
+    },
+    optionShapes: [
+      // Correct: 5 cubes rotated 90° → line along Y
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:0,gy:3,gz:0},{gx:0,gy:4,gz:0}],
+      // 5 cubes along X (no rotation)
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:3,gy:0,gz:0},{gx:4,gy:0,gz:0}],
+      // 4 cubes Y (wrong count)
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:0,gy:3,gz:0}],
+      // 2D square
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},{gx:2,gy:2,gz:0}],
+    ],
+    answer: 0,
+  },
+  // ---------- 11. Cubos ocultos complejos ----------
+  {
+    id: 11, area: 'Memoria de trabajo', difficulty: 5, weight: 2.3, timeLimit: 75,
+    title: 'Cuenta todos los cubos (complejo)',
+    instruction: 'Base 3×3. Las torres varían en altura. Considera los cubos ocultos que sostienen a los visibles.',
+    render: (c) => {
+      // heights at (x,y): pattern
+      const heights = [
+        [3, 2, 1],
+        [2, 3, 2],
+        [1, 2, 3],
+      ];
+      const cubes = [];
+      for (let x=0;x<3;x++) for (let y=0;y<3;y++) {
+        const h = heights[x][y];
+        for (let z=0; z<h; z++) cubes.push({gx:x,gy:y,gz:z});
+      }
+      renderStructure(c, cubes);
+    },
+    options: ['18', '19', '20', '21'], answer: 1, // 3+2+1+2+3+2+1+2+3 = 19
+  },
+  // ---------- 12. Caminos en grid ----------
+  {
+    id: 12, area: 'Lógica inductiva', difficulty: 5, weight: 2.3, timeLimit: 90,
+    title: 'Cuenta los caminos más cortos',
+    instruction: 'En un grid 3×3, sólo puedes moverte a la derecha o hacia abajo. ¿Cuántos caminos distintos conectan la esquina verde con la roja?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const gridN = 3;
+      const cell = Math.min((w - 80) / gridN, (h - 80) / gridN, 72);
+      const ox = (w - cell * gridN) / 2;
+      const oy = (h - cell * gridN) / 2;
+      // grid lines (4x4 dots)
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.5;
+      for (let i=0;i<=gridN;i++){
+        ctx.beginPath(); ctx.moveTo(ox + i*cell, oy); ctx.lineTo(ox + i*cell, oy + gridN*cell); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ox, oy + i*cell); ctx.lineTo(ox + gridN*cell, oy + i*cell); ctx.stroke();
+      }
+      // dots
+      for (let i=0;i<=gridN;i++) for (let j=0;j<=gridN;j++){
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(ox + i*cell, oy + j*cell, 3, 0, Math.PI*2); ctx.fill();
+      }
+      // start and end
+      ctx.fillStyle = '#00e4a8';
+      ctx.beginPath(); ctx.arc(ox, oy, 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff5a7a';
+      ctx.beginPath(); ctx.arc(ox + gridN*cell, oy + gridN*cell, 9, 0, Math.PI*2); ctx.fill();
+      // labels
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '600 11px JetBrains Mono, monospace';
+      ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.fillText('A', ox - 14, oy);
+      ctx.textAlign='left'; ctx.textBaseline='top';
+      ctx.fillText('B', ox + gridN*cell + 6, oy + gridN*cell);
+    },
+    options: ['10', '15', '20', '35'], answer: 2, // C(6,3) = 20
+  },
+  // ---------- 13. Matriz 3x3 doble regla ----------
+  {
+    id: 13, area: 'Lógica inductiva', difficulty: 5, weight: 2.5, timeLimit: 90,
+    title: 'Matriz con doble regla',
+    instruction: 'Cada fila mantiene el mismo color pero aumenta los cubos en 1. Cada columna mantiene el número pero cambia la orientación (línea X, L, torre). Descubre la pieza faltante.',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 9;
+      const cellW = w / 3, cellH = h / 3;
+      const colors = ['#7c5cff', '#00e4a8', '#4ddbff'];
+      // shape generator: row r (0..2) = count-1 base; col c (0..2) = type
+      // type 0: line X; type 1: L-shape; type 2: tower (stacked)
+      const buildShape = (r, col) => {
+        const n = r + 2; // 2, 3, 4 cubes
+        if (col === 0) return Array.from({length:n}, (_,i)=>({gx:i,gy:0,gz:0}));
+        if (col === 1) {
+          // L shape: row of n-1 + 1 at end perpendicular
+          const a = Array.from({length:n-1}, (_,i)=>({gx:i,gy:0,gz:0}));
+          a.push({gx:n-2,gy:1,gz:0});
+          return a;
+        }
+        // tower
+        return Array.from({length:n}, (_,i)=>({gx:0,gy:0,gz:i}));
+      };
+      for (let r=0;r<3;r++) {
+        for (let col=0;col<3;col++) {
+          if (r===2 && col===2) {
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.font = '700 36px Inter, sans-serif';
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText('?', cellW*col + cellW/2, cellH*r + cellH/2);
+            continue;
+          }
+          const cubes = buildShape(r, col);
+          const cx = cellW*col + cellW/2, cy = cellH*r + cellH*0.65;
+          const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+          sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, cx-S, cy, colors[r], {size:S}));
+        }
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+      for (let i=1;i<3;i++){
+        ctx.beginPath(); ctx.moveTo(cellW*i, 0); ctx.lineTo(cellW*i, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, cellH*i); ctx.lineTo(w, cellH*i); ctx.stroke();
+      }
+    },
+    // correct: r=2, col=2 → tower of 4 cubes, color #4ddbff
+    optionShapes: [
+      [{gx:0,gy:0,gz:0,color:'#4ddbff'},{gx:0,gy:0,gz:1,color:'#4ddbff'},{gx:0,gy:0,gz:2,color:'#4ddbff'},{gx:0,gy:0,gz:3,color:'#4ddbff'}],
+      [{gx:0,gy:0,gz:0,color:'#4ddbff'},{gx:0,gy:0,gz:1,color:'#4ddbff'},{gx:0,gy:0,gz:2,color:'#4ddbff'}],
+      [{gx:0,gy:0,gz:0,color:'#7c5cff'},{gx:0,gy:0,gz:1,color:'#7c5cff'},{gx:0,gy:0,gz:2,color:'#7c5cff'},{gx:0,gy:0,gz:3,color:'#7c5cff'}],
+      [{gx:0,gy:0,gz:0,color:'#4ddbff'},{gx:1,gy:0,gz:0,color:'#4ddbff'},{gx:2,gy:0,gz:0,color:'#4ddbff'},{gx:3,gy:0,gz:0,color:'#4ddbff'}],
+    ],
+    answer: 0,
+  },
+  // ---------- 14. Descomposición ----------
+  {
+    id: 14, area: 'Visualización 3D', difficulty: 5, weight: 2.5, timeLimit: 80,
+    title: 'Piezas que componen la figura',
+    instruction: 'Identifica qué número mínimo de cubos unitarios forma la estructura, sabiendo que hay 2 capas superpuestas.',
+    render: (c) => {
+      // T-shape on bottom, inverted T on top, total 10 cubes
+      const cubes = [
+        {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:1,gy:1,gz:0},{gx:1,gy:2,gz:0},
+        {gx:1,gy:0,gz:1},{gx:1,gy:1,gz:1},{gx:0,gy:2,gz:1},{gx:1,gy:2,gz:1},{gx:2,gy:2,gz:1},
+      ];
+      renderStructure(c, cubes);
+    },
+    options: ['9', '10', '11', '12'], answer: 1,
+  },
+  // ---------- 15. Volumen final (muy difícil) ----------
+  {
+    id: 15, area: 'Memoria de trabajo', difficulty: 5, weight: 2.8, timeLimit: 90,
+    title: 'Volumen de la estructura final',
+    instruction: 'Se parte de un prisma 4×4×3. Se han retirado 2 columnas completas (altura 3) y 1 cubo aislado. ¿Cuántos cubos permanecen?',
+    render: (c) => {
+      const cubes = [];
+      for (let x=0;x<4;x++) for (let y=0;y<4;y++) for (let z=0;z<3;z++) cubes.push({gx:x,gy:y,gz:z});
+      // Remove 2 columns: (3,0,*) and (3,3,*) — 6 cubes
+      // Remove 1 isolated cube: (1,1,2)
+      const removed = new Set();
+      for (let z=0;z<3;z++){ removed.add(`3,0,${z}`); removed.add(`3,3,${z}`); }
+      removed.add('1,1,2');
+      const filtered = cubes.filter(c => !removed.has(`${c.gx},${c.gy},${c.gz}`));
+      const ghosts = [...removed].map(k => { const [gx,gy,gz] = k.split(',').map(Number); return {gx,gy,gz}; });
+      renderStructure(c, filtered, {ghosts});
+    },
+    options: ['39', '40', '41', '42'], answer: 2, // 48 - 6 - 1 = 41
+  },
+  // ---------- 16. Superficie externa ----------
+  {
+    id: 16, area: 'Razonamiento espacial', difficulty: 5, weight: 2.6, timeLimit: 80,
+    title: 'Cuenta las caras expuestas',
+    instruction: 'Cada cubo tiene 6 caras unitarias. Las caras compartidas con un vecino directo no son visibles. ¿Cuántas caras unitarias permanecen expuestas en la estructura completa?',
+    render: (c) => renderStructure(c, [
+      {gx:1,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},{gx:2,gy:1,gz:0},
+      {gx:1,gy:2,gz:0},
+    ]),
+    // 5 cubes × 6 = 30 faces; 4 adjacencies × 2 hidden = 8; exposed = 22
+    options: ['20', '22', '24', '26'], answer: 1,
+  },
+  // ---------- 17. Analogía de rotación ----------
+  {
+    id: 17, area: 'Rotación mental', difficulty: 5, weight: 2.6, timeLimit: 80,
+    title: 'Analogía espacial',
+    instruction: 'A es a B como C es a ? — identifica la misma transformación (rotación 90° horaria) aplicada a C.',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 11;
+      // A: L tetromino flat
+      const shapeA = [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:2,gy:1,gz:0}];
+      // B: A rotated 90° CW about Z
+      const shapeB = [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:1,gy:0,gz:0}];
+      // C: T tetromino
+      const shapeC = [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:1,gy:1,gz:0}];
+      const draw = (cubes, offX, offY, color) => {
+        const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+        sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, offX, offY, color, {size:S}));
+      };
+      draw(shapeA, w*0.18, h*0.38, '#00e4a8');
+      draw(shapeB, w*0.52, h*0.38, '#00e4a8');
+      draw(shapeC, w*0.18, h*0.78, '#7c5cff');
+      // labels
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '700 14px Inter, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('A', w*0.18, 12);
+      ctx.fillText('B', w*0.52, 12);
+      ctx.fillText('C', w*0.18, h*0.52);
+      ctx.fillText('?', w*0.52, h*0.52);
+      // arrows
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 1.5;
+      const arrow = (x1, x2, y) => {
+        ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x2, y); ctx.lineTo(x2-6, y-4); ctx.lineTo(x2-6, y+4); ctx.closePath(); ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fill();
+      };
+      arrow(w*0.28, w*0.42, h*0.38);
+      arrow(w*0.28, w*0.42, h*0.78);
+      // Big ?
+      ctx.fillStyle = 'rgba(124,92,255,0.45)';
+      ctx.font = '700 46px Inter, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', w*0.62, h*0.78);
+    },
+    optionShapes: [
+      // Correct: T rotated 90° CW (vertical line + middle protrusion)
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:1,gy:1,gz:0}],
+      // C unchanged
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:1,gy:1,gz:0}],
+      // Mirror: protrusion on the other side
+      [{gx:1,gy:0,gz:0},{gx:1,gy:1,gz:0},{gx:1,gy:2,gz:0},{gx:0,gy:1,gz:0}],
+      // 2x2 square (different shape)
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0}],
+    ],
+    answer: 0,
+  },
+  // ---------- 18. Vista lateral derecha ----------
+  {
+    id: 18, area: 'Visualización 3D', difficulty: 5, weight: 2.4, timeLimit: 70,
+    title: '¿Cuál es la vista lateral derecha?',
+    instruction: 'Proyecta mentalmente la estructura sobre el plano Y-Z (vista desde el lado derecho). Elige la silueta correcta.',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},{gx:2,gy:1,gz:0},
+      {gx:0,gy:2,gz:0},
+      {gx:0,gy:0,gz:1},{gx:0,gy:1,gz:1},
+      {gx:0,gy:0,gz:2},
+    ]),
+    // Y-Z projection (encoded with gx = y-pos for 2D renderer):
+    // y=0: z=0,1,2; y=1: z=0,1; y=2: z=0
+    optionShapes: [
+      [{gx:0,gz:0},{gx:0,gz:1},{gx:0,gz:2},{gx:1,gz:0},{gx:1,gz:1},{gx:2,gz:0}],
+      [{gx:0,gz:0},{gx:0,gz:1},{gx:0,gz:2},{gx:1,gz:0},{gx:2,gz:0}],
+      [{gx:0,gz:0},{gx:1,gz:0},{gx:2,gz:0},{gx:2,gz:1},{gx:1,gz:2}],
+      [{gx:0,gz:0},{gx:1,gz:0},{gx:0,gz:1},{gx:1,gz:1},{gx:0,gz:2}],
+    ],
+    optionRenderer: 'front', answer: 0,
+  },
+  // ---------- 19. Rotación sobre eje X ----------
+  {
+    id: 19, area: 'Rotación mental', difficulty: 5, weight: 2.6, timeLimit: 80,
+    title: 'Rotación sobre el eje X',
+    instruction: 'La estructura gira 90° alrededor del eje X (horizontal, perpendicular a ti). El eje Y pasa a ocupar el eje Z. ¿Cuál es la orientación final?',
+    render: (c) => renderStructure(c, [
+      {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},
+      {gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},
+    ], {color:'#00e4a8'}),
+    // Rotation about +X axis 90° CCW: (y,z) → (-z, y). Applied:
+    // (0,0,0),(1,0,0),(2,0,0),(0,1,0),(0,2,0) → after rot:
+    // (0,0,0),(1,0,0),(2,0,0),(0,0,1),(0,0,2)
+    optionShapes: [
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0}],
+      [{gx:0,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},{gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2}],
+      [{gx:0,gy:0,gz:0},{gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2},{gx:1,gy:0,gz:0},{gx:1,gy:0,gz:1}],
+    ],
+    answer: 0,
+  },
+  // ---------- 20. Caminos en grid 4×3 ----------
+  {
+    id: 20, area: 'Lógica inductiva', difficulty: 5, weight: 2.7, timeLimit: 110,
+    title: 'Caminos más cortos en grid 4×3',
+    instruction: 'En un grid de 4 columnas y 3 filas, sólo puedes moverte a la derecha o hacia abajo por las aristas. ¿Cuántos caminos distintos conectan la esquina verde (A) con la roja (B)?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const gridW = 4, gridH = 3;
+      const cell = Math.min((w - 80) / gridW, (h - 80) / gridH, 62);
+      const ox = (w - cell * gridW) / 2;
+      const oy = (h - cell * gridH) / 2;
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.5;
+      for (let i=0;i<=gridW;i++){ ctx.beginPath(); ctx.moveTo(ox + i*cell, oy); ctx.lineTo(ox + i*cell, oy + gridH*cell); ctx.stroke(); }
+      for (let j=0;j<=gridH;j++){ ctx.beginPath(); ctx.moveTo(ox, oy + j*cell); ctx.lineTo(ox + gridW*cell, oy + j*cell); ctx.stroke(); }
+      for (let i=0;i<=gridW;i++) for (let j=0;j<=gridH;j++){
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(ox + i*cell, oy + j*cell, 3, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.fillStyle = '#00e4a8';
+      ctx.beginPath(); ctx.arc(ox, oy, 10, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff5a7a';
+      ctx.beginPath(); ctx.arc(ox + gridW*cell, oy + gridH*cell, 10, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '700 13px Inter, sans-serif';
+      ctx.textAlign='left'; ctx.textBaseline='bottom';
+      ctx.fillText('A', ox - 16, oy);
+      ctx.textBaseline='top';
+      ctx.fillText('B', ox + gridW*cell + 8, oy + gridH*cell);
+    },
+    // C(7,3) = 35
+    options: ['21', '35', '42', '56'], answer: 1,
+  },
+  // ---------- 21. Fusión de estructuras ----------
+  {
+    id: 21, area: 'Memoria de trabajo', difficulty: 5, weight: 3.0, timeLimit: 120,
+    title: 'Fusión de estructuras',
+    instruction: 'Ambas estructuras comparten el origen (0,0,0). Si se superponen, los cubos en posiciones compartidas cuentan una sola vez. ¿Cuántos cubos tiene la figura resultante?',
+    render: (c) => {
+      const ctx = c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth, h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const S = 13;
+      // A: 3D L — 7 cubes
+      const shapeA = [
+        {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:2,gy:0,gz:0},
+        {gx:0,gy:1,gz:0},{gx:0,gy:2,gz:0},
+        {gx:0,gy:0,gz:1},{gx:0,gy:0,gz:2},
+      ];
+      // B: 2×2×2 — 8 cubes
+      const shapeB = [
+        {gx:0,gy:0,gz:0},{gx:1,gy:0,gz:0},{gx:0,gy:1,gz:0},{gx:1,gy:1,gz:0},
+        {gx:0,gy:0,gz:1},{gx:1,gy:0,gz:1},{gx:0,gy:1,gz:1},{gx:1,gy:1,gz:1},
+      ];
+      // Shared: (0,0,0),(1,0,0),(0,1,0),(0,0,1) → 4 cubes
+      // Union = 7 + 8 - 4 = 11
+      const draw = (cubes, offX, offY, color) => {
+        const sorted = [...cubes].sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy) || a.gz-b.gz);
+        sorted.forEach(cu => drawCube(ctx, cu.gx, cu.gy, cu.gz, offX, offY, color, {size:S}));
+      };
+      draw(shapeA, w*0.25, h*0.6, '#7c5cff');
+      draw(shapeB, w*0.75, h*0.6, '#00e4a8');
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '600 13px Inter, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('Estructura A', w*0.25, 16);
+      ctx.fillText('Estructura B', w*0.75, 16);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '600 11px JetBrains Mono, monospace';
+      ctx.textBaseline='bottom';
+      ctx.fillText('7 cubos', w*0.25, h - 10);
+      ctx.fillText('8 cubos', w*0.75, h - 10);
+      ctx.fillStyle = 'rgba(124,92,255,0.55)';
+      ctx.font = '700 38px Inter, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('∪', w*0.5, h*0.55);
+    },
+    options: ['9', '11', '13', '15'], answer: 1,
+  },
+];
+
+/* ================================================================
+   OPCIÓN RENDERING
+   ================================================================ */
+function renderOptions(puzzle) {
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  grid.className = 'options-grid cols-2';
+  const letters = ['A','B','C','D'];
+
+  if (puzzle.options) {
+    puzzle.options.forEach((opt, i) => {
+      const el = document.createElement('div');
+      el.className = 'option'; el.dataset.idx = i;
+      el.innerHTML = `<span class="tag">${letters[i]}</span>${opt}`;
+      el.onclick = () => selectOption(i);
+      grid.appendChild(el);
+    });
+  } else if (puzzle.optionShapes) {
+    puzzle.optionShapes.forEach((cubes, i) => {
+      const el = document.createElement('div');
+      el.className = 'option'; el.dataset.idx = i;
+      const tag = document.createElement('span');
+      tag.className = 'tag'; tag.textContent = letters[i];
+      el.appendChild(tag);
+      const canvas = document.createElement('canvas');
+      canvas.style.width = '100%'; canvas.style.height = '130px';
+      el.appendChild(canvas);
+      el.onclick = () => selectOption(i);
+      grid.appendChild(el);
+      requestAnimationFrame(() => {
+        if (puzzle.optionRenderer === 'top') renderTopView(canvas, cubes);
+        else if (puzzle.optionRenderer === 'front') renderFrontView(canvas, cubes);
+        else renderStructure(canvas, cubes.map(c => ({...c, color: c.color || '#7c5cff'})), {size:13});
+      });
+    });
+  }
+}
+
+/* ================================================================
+   ANÁLISIS CONDUCTUAL (face-api.js)
+   ================================================================ */
+class BehaviorTracker {
+  constructor() {
+    this.samples = [];
+    this.state = { focus: 0.5, calm: 0.5, stress: 0 };
+    this.running = false;
+    this.video = null;
+    this.timer = null;
+    this.lastFace = false;
+    this.faceLossCount = 0;
+    this.faceDetectedCount = 0;
+  }
+  async init() {
+    if (this.modelsLoaded) return true;
+    try {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+      ]);
+      this.modelsLoaded = true;
+      return true;
+    } catch (e) {
+      console.warn('[Behavior] Model load failed:', e);
+      return false;
+    }
+  }
+  attach(video) { this.video = video; }
+  start() {
+    if (!this.video || this.running) return;
+    this.running = true;
+    const loop = async () => {
+      if (!this.running) return;
+      try {
+        const det = await faceapi
+          .detectSingleFace(this.video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 }))
+          .withFaceExpressions();
+        this._push(det);
+      } catch (e) {}
+      this.timer = setTimeout(loop, 550);
+    };
+    loop();
+  }
+  _push(det) {
+    const t = Date.now();
+    if (!det) {
+      this.samples.push({ t, hasFace: false });
+      this.faceLossCount++;
+      this.lastFace = false;
+      this.state.focus = Math.max(0, this.state.focus - 0.06);
+      this.state.calm = Math.max(0, this.state.calm - 0.02);
+      return;
+    }
+    this.faceDetectedCount++;
+    this.lastFace = true;
+    const e = det.expressions;
+    const stress = Math.min(1, e.angry + e.fearful + e.disgusted + e.sad * 0.6);
+    const calm = Math.min(1, e.neutral + e.happy * 0.5);
+    this.samples.push({
+      t, hasFace: true, expressions: {...e},
+      box: det.detection?.box,
+    });
+    // smooth state
+    this.state.focus = this.state.focus * 0.85 + 0.15 * (1 - stress * 0.3);
+    this.state.calm = this.state.calm * 0.85 + 0.15 * calm;
+    this.state.stress = this.state.stress * 0.8 + 0.2 * stress;
+  }
+  stop() {
+    this.running = false;
+    if (this.timer) clearTimeout(this.timer);
+  }
+  summary() {
+    const faces = this.samples.filter(s => s.hasFace);
+    const presence = faces.length / Math.max(1, this.samples.length);
+    const avg = (key) => faces.reduce((s,x)=>s + (x.expressions[key]||0), 0) / Math.max(1, faces.length);
+    const avgNeutral = avg('neutral'), avgHappy = avg('happy'),
+          avgAngry = avg('angry'), avgFear = avg('fearful'),
+          avgSad = avg('sad'), avgSurprise = avg('surprised'),
+          avgDisgust = avg('disgusted');
+    const stress = avgAngry + avgFear + avgDisgust;
+    const calm = avgNeutral + avgHappy * 0.5;
+    const confusion = avgSurprise + avgSad * 0.4;
+    const composure = Math.max(0, Math.min(1, calm - stress * 0.5));
+    const focus = Math.max(0, Math.min(1, presence * (0.8 + calm * 0.3 - stress * 0.2)));
+    // micro-movement proxy: face-box center variance
+    let movement = 0;
+    const withBox = faces.filter(f => f.box);
+    if (withBox.length > 3) {
+      const cx = withBox.map(f => f.box.x + f.box.width/2);
+      const cy = withBox.map(f => f.box.y + f.box.height/2);
+      const mx = cx.reduce((s,v)=>s+v,0)/cx.length;
+      const my = cy.reduce((s,v)=>s+v,0)/cy.length;
+      const varX = cx.reduce((s,v)=>s+(v-mx)**2,0)/cx.length;
+      const varY = cy.reduce((s,v)=>s+(v-my)**2,0)/cy.length;
+      movement = Math.min(1, Math.sqrt(varX + varY) / 80);
+    }
+    const stability = 1 - movement;
+    return {
+      presence, focus, composure, stress, confusion, calm, stability,
+      sampleCount: this.samples.length,
+      faceDetectedCount: this.faceDetectedCount,
+      enabled: this.samples.length > 0,
+    };
+  }
+}
+
+const tracker = new BehaviorTracker();
+
+/* ================================================================
+   CÁMARA
+   ================================================================ */
+let mediaStream = null;
+async function startCamera(videoEl) {
+  if (mediaStream) return mediaStream;
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 320, height: 240, facingMode: 'user' },
+    audio: false,
+  });
+  videoEl.srcObject = mediaStream;
+  return mediaStream;
+}
+function stopCamera() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+}
+
+/* ================================================================
+   ESTADO DEL TEST
+   ================================================================ */
+const state = {
+  idx: 0,
+  answers: [],
+  selected: null,
+  tStart: 0, tPuzzleStart: 0,
+  timerId: null,
+  timeLeft: 0,
+  name: '',
+  age: null,
+  cameraEnabled: false,
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startTest() {
+  state.idx = 0; state.answers = []; state.selected = null;
+  state.tStart = Date.now();
+
+  if (state.cameraEnabled) {
+    const hud = document.getElementById('cam-hud');
+    hud.classList.remove('hidden');
+    const hudVideo = document.getElementById('hud-video');
+    if (mediaStream) hudVideo.srcObject = mediaStream;
+    tracker.attach(hudVideo);
+    tracker.start();
+    startHUDUpdater();
+  }
+
+  showScreen('screen-test');
+  loadPuzzle();
+}
+
+let hudInterval = null;
+function startHUDUpdater() {
+  if (hudInterval) clearInterval(hudInterval);
+  hudInterval = setInterval(() => {
+    const s = tracker.state;
+    const f = Math.round(s.focus * 100);
+    const c = Math.round(s.calm * 100);
+    const st = Math.round(s.stress * 100);
+    document.getElementById('hud-focus').textContent = f + '%';
+    document.getElementById('hud-calm').textContent = c + '%';
+    document.getElementById('hud-stress').textContent = st + '%';
+    document.getElementById('hud-focus-bar').style.width = f + '%';
+    document.getElementById('hud-calm-bar').style.width = c + '%';
+    document.getElementById('hud-stress-bar').style.width = st + '%';
+    const ov = document.getElementById('cam-overlay');
+    ov.classList.toggle('ok', tracker.lastFace);
+    document.getElementById('cam-overlay-text').textContent = tracker.lastFace ? 'rostro ok' : 'sin rostro';
+  }, 400);
+}
+function stopHUDUpdater() {
+  if (hudInterval) clearInterval(hudInterval);
+  hudInterval = null;
+}
+
+function loadPuzzle() {
+  const p = PUZZLES[state.idx];
+  state.selected = null;
+  state.tPuzzleStart = Date.now();
+  state.timeLeft = p.timeLimit;
+
+  document.getElementById('puzzle-tag').textContent = `Ítem ${state.idx+1} · ${p.area} · dif. ${p.difficulty}/5`;
+  document.getElementById('puzzle-title').textContent = p.title;
+  document.getElementById('puzzle-instruction').textContent = p.instruction;
+  document.getElementById('progress-text').textContent = `Ítem ${state.idx+1} de ${PUZZLES.length}`;
+  const pct = Math.round((state.idx) / PUZZLES.length * 100);
+  document.getElementById('progress-percent').textContent = pct + '%';
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('btn-next').textContent =
+    state.idx === PUZZLES.length - 1 ? 'Finalizar →' : 'Siguiente →';
+
+  const canvas = document.getElementById('puzzle-canvas');
+  canvas.style.width = '100%'; canvas.style.height = '360px';
+  requestAnimationFrame(() => p.render(canvas));
+  renderOptions(p);
+
+  if (state.timerId) clearInterval(state.timerId);
+  updateTimer();
+  state.timerId = setInterval(() => {
+    state.timeLeft--;
+    updateTimer();
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerId);
+      recordAnswer();
+      nextPuzzle();
+    }
+  }, 1000);
+}
+
+function updateTimer() {
+  const el = document.getElementById('timer');
+  const txt = document.getElementById('timer-text');
+  const m = Math.floor(state.timeLeft / 60).toString().padStart(2,'0');
+  const s = (state.timeLeft % 60).toString().padStart(2,'0');
+  txt.textContent = `${m}:${s}`;
+  el.classList.toggle('warn', state.timeLeft <= 15 && state.timeLeft > 5);
+  el.classList.toggle('danger', state.timeLeft <= 5);
+}
+
+function selectOption(i) {
+  state.selected = i;
+  document.querySelectorAll('.option').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.idx) === i);
+  });
+  document.getElementById('btn-next').disabled = false;
+}
+
+function recordAnswer() {
+  const p = PUZZLES[state.idx];
+  const time = (Date.now() - state.tPuzzleStart) / 1000;
+  const correct = state.selected === p.answer;
+  state.answers.push({
+    idx: state.idx, correct, time,
+    weight: p.weight, difficulty: p.difficulty,
+    area: p.area, timeLimit: p.timeLimit,
+    selected: state.selected, answer: p.answer,
+  });
+}
+
+function nextPuzzle() {
+  state.idx++;
+  if (state.idx >= PUZZLES.length) {
+    if (state.timerId) clearInterval(state.timerId);
+    tracker.stop();
+    stopHUDUpdater();
+    document.getElementById('cam-hud').classList.add('hidden');
+    showResults();
+  } else {
+    loadPuzzle();
+  }
+}
+
+/* ================================================================
+   CÁLCULO DE IQ
+   ================================================================ */
+function normalCDF(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989422804 * Math.exp(-z * z / 2);
+  let p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return z > 0 ? 1 - p : p;
+}
+
+function computeResults() {
+  const answers = state.answers;
+  const totalWeight = answers.reduce((s,a)=>s+a.weight, 0);
+  const correctWeight = answers.reduce((s,a)=>s + (a.correct ? a.weight : 0), 0);
+  const accuracy = correctWeight / totalWeight;
+
+  const avgTimeRatio = answers.reduce((s,a)=>s + a.time / a.timeLimit, 0) / answers.length;
+  let timeFactor;
+  if (avgTimeRatio < 0.5) timeFactor = 0.06;
+  else if (avgTimeRatio < 0.85) timeFactor = 0;
+  else timeFactor = -0.04;
+
+  const behavior = tracker.summary();
+  // Behavioral adjustment: small nudge ±0.02
+  let behaviorFactor = 0;
+  if (behavior.enabled) {
+    // Reward composure + focus. Penalize high stress or low presence.
+    const score = behavior.composure * 0.5 + behavior.focus * 0.5;
+    if (score > 0.65) behaviorFactor = 0.02;
+    else if (score < 0.35) behaviorFactor = -0.02;
+  }
+
+  const raw = Math.max(0, Math.min(1, accuracy + timeFactor + behaviorFactor));
+  let z;
+  if (raw >= 0.5) z = (raw - 0.5) * 5.33;
+  else z = (raw - 0.5) * 4;
+  const iq = Math.round(100 + z * 15);
+  const percentile = normalCDF(z) * 100;
+
+  const areas = {};
+  answers.forEach(a => {
+    if (!areas[a.area]) areas[a.area] = { w:0, cw:0 };
+    areas[a.area].w += a.weight;
+    if (a.correct) areas[a.area].cw += a.weight;
+  });
+  const breakdown = Object.entries(areas).map(([k,v]) => ({
+    area: k, score: Math.round(v.cw / v.w * 100)
+  }));
+
+  const totalTime = Math.round(answers.reduce((s,a)=>s+a.time, 0));
+  const correctCount = answers.filter(a=>a.correct).length;
+  const avgSpeed = (totalTime / answers.length).toFixed(1);
+
+  return {
+    iq, percentile, raw, accuracy, totalTime, correctCount,
+    total: PUZZLES.length, breakdown, avgSpeed,
+    behavior, answers, avgTimeRatio, z
+  };
+}
+
+function classifyIQ(iq) {
+  if (iq >= 145) return { label: 'Muy superior (genio)', dot: '#00e4a8' };
+  if (iq >= 130) return { label: 'Muy superior', dot: '#00e4a8' };
+  if (iq >= 120) return { label: 'Superior', dot: '#30f0c2' };
+  if (iq >= 110) return { label: 'Por encima del promedio', dot: '#7c5cff' };
+  if (iq >= 90)  return { label: 'Promedio', dot: '#7c5cff' };
+  if (iq >= 80)  return { label: 'Por debajo del promedio', dot: '#ffb547' };
+  if (iq >= 70)  return { label: 'Límite inferior', dot: '#ff5a7a' };
+  return            { label: 'Muy por debajo',           dot: '#ff5a7a' };
+}
+
+function drawBellCurve(result) {
+  const svg = document.getElementById('bell-curve');
+  svg.innerHTML = '';
+  const W = 400, H = 220, pad = 20;
+  const xMin = 40, xMax = 160;
+  const xScale = iq => pad + (iq - xMin) / (xMax - xMin) * (W - pad*2);
+  const points = [];
+  const sigma = 15, mu = 100;
+  let maxY = 0;
+  for (let iq = xMin; iq <= xMax; iq += 1) {
+    const y = Math.exp(-0.5 * Math.pow((iq - mu)/sigma, 2)) / (sigma * Math.sqrt(2*Math.PI));
+    points.push([iq, y]);
+    if (y > maxY) maxY = y;
+  }
+  const yScale = y => H - pad - (y / maxY) * (H - pad*2);
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const grad = document.createElementNS(ns, 'linearGradient');
+  grad.setAttribute('id','bellgrad'); grad.setAttribute('x1','0'); grad.setAttribute('x2','0'); grad.setAttribute('y1','0'); grad.setAttribute('y2','1');
+  grad.innerHTML = `<stop offset="0" stop-color="#7c5cff" stop-opacity="0.4"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0"/>`;
+  const defs = document.createElementNS(ns, 'defs'); defs.appendChild(grad); svg.appendChild(defs);
+
+  let d = `M ${xScale(xMin)} ${H-pad} `;
+  points.forEach(([iq,y]) => { d += `L ${xScale(iq)} ${yScale(y)} `; });
+  d += `L ${xScale(xMax)} ${H-pad} Z`;
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d); path.setAttribute('fill', 'url(#bellgrad)'); svg.appendChild(path);
+
+  const line = document.createElementNS(ns, 'path');
+  let d2 = '';
+  points.forEach(([iq,y], i) => { d2 += (i===0?'M':'L') + ` ${xScale(iq)} ${yScale(y)} `; });
+  line.setAttribute('d', d2); line.setAttribute('fill','none');
+  line.setAttribute('stroke','#7c5cff'); line.setAttribute('stroke-width','1.5');
+  svg.appendChild(line);
+
+  [55, 70, 85, 100, 115, 130, 145].forEach(iq => {
+    const tx = xScale(iq);
+    const tick = document.createElementNS(ns, 'line');
+    tick.setAttribute('x1', tx); tick.setAttribute('x2', tx);
+    tick.setAttribute('y1', H-pad); tick.setAttribute('y2', H-pad+4);
+    tick.setAttribute('stroke','rgba(255,255,255,0.3)'); svg.appendChild(tick);
+    const text = document.createElementNS(ns, 'text');
+    text.setAttribute('x', tx); text.setAttribute('y', H-pad+16);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('fill','rgba(255,255,255,0.45)');
+    text.setAttribute('font-size','10');
+    text.setAttribute('font-family','JetBrains Mono, monospace');
+    text.textContent = iq; svg.appendChild(text);
+  });
+  const axis = document.createElementNS(ns, 'line');
+  axis.setAttribute('x1', pad); axis.setAttribute('x2', W-pad);
+  axis.setAttribute('y1', H-pad); axis.setAttribute('y2', H-pad);
+  axis.setAttribute('stroke','rgba(255,255,255,0.12)'); svg.appendChild(axis);
+
+  const userIQ = Math.max(xMin, Math.min(xMax, result.iq));
+  const ux = xScale(userIQ);
+  const uy = yScale(Math.exp(-0.5 * Math.pow((userIQ - mu)/sigma, 2)) / (sigma * Math.sqrt(2*Math.PI)));
+  const mline = document.createElementNS(ns, 'line');
+  mline.setAttribute('x1', ux); mline.setAttribute('x2', ux);
+  mline.setAttribute('y1', H-pad); mline.setAttribute('y2', uy);
+  mline.setAttribute('stroke','#00e4a8'); mline.setAttribute('stroke-width','2');
+  mline.setAttribute('stroke-dasharray','4 3'); svg.appendChild(mline);
+  const dot = document.createElementNS(ns, 'circle');
+  dot.setAttribute('cx', ux); dot.setAttribute('cy', uy);
+  dot.setAttribute('r', 6); dot.setAttribute('fill', '#00e4a8');
+  dot.setAttribute('stroke', '#052016'); dot.setAttribute('stroke-width', '2'); svg.appendChild(dot);
+  const label = document.createElementNS(ns, 'text');
+  label.setAttribute('x', ux); label.setAttribute('y', uy - 12);
+  label.setAttribute('text-anchor','middle');
+  label.setAttribute('fill','#00e4a8');
+  label.setAttribute('font-size','12');
+  label.setAttribute('font-weight','700');
+  label.textContent = `IQ ${result.iq}`; svg.appendChild(label);
+}
+
+function drawTimeChart(result) {
+  const svg = document.getElementById('time-chart');
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const W = 600, H = 110, padX = 20, padY = 14;
+  const n = result.answers.length;
+  const bw = (W - padX*2) / n - 4;
+  // axis
+  const ax = document.createElementNS(ns, 'line');
+  ax.setAttribute('x1', padX); ax.setAttribute('x2', W-padX);
+  ax.setAttribute('y1', H-padY); ax.setAttribute('y2', H-padY);
+  ax.setAttribute('stroke','rgba(255,255,255,0.12)'); svg.appendChild(ax);
+  result.answers.forEach((a, i) => {
+    const x = padX + i * ((W - padX*2) / n) + 2;
+    const ratio = Math.min(1, a.time / a.timeLimit);
+    const bh = Math.max(2, (H - padY*2) * ratio);
+    const rect = document.createElementNS(ns, 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', H - padY - bh);
+    rect.setAttribute('width', bw);
+    rect.setAttribute('height', bh);
+    rect.setAttribute('rx', 2);
+    rect.setAttribute('fill', a.correct ? 'url(#grad-ok)' : '#ff5a7a');
+    svg.appendChild(rect);
+    // label
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', x + bw/2);
+    lbl.setAttribute('y', H-2);
+    lbl.setAttribute('text-anchor','middle');
+    lbl.setAttribute('fill','rgba(255,255,255,0.4)');
+    lbl.setAttribute('font-size','9');
+    lbl.setAttribute('font-family','JetBrains Mono, monospace');
+    lbl.textContent = (i+1);
+    svg.appendChild(lbl);
+  });
+  const defs = document.createElementNS(ns, 'defs');
+  const g = document.createElementNS(ns, 'linearGradient');
+  g.setAttribute('id','grad-ok'); g.setAttribute('x1','0'); g.setAttribute('x2','0'); g.setAttribute('y1','0'); g.setAttribute('y2','1');
+  g.innerHTML = `<stop offset="0" stop-color="#00e4a8"/><stop offset="1" stop-color="#7c5cff"/>`;
+  defs.appendChild(g); svg.appendChild(defs);
+}
+
+function showResults() {
+  const r = computeResults();
+  showScreen('screen-result');
+  document.getElementById('iq-score').textContent = r.iq;
+  const pct = r.percentile;
+  document.getElementById('iq-percentile').textContent = (pct >= 99 ? pct.toFixed(2) : pct.toFixed(1));
+  document.getElementById('iq-above').textContent = (pct >= 99 ? pct.toFixed(2) : pct.toFixed(1)) + '%';
+  const cls = classifyIQ(r.iq);
+  document.getElementById('iq-class').textContent = cls.label;
+  document.getElementById('iq-dot').style.background = cls.dot;
+
+  document.getElementById('stat-correct').innerHTML = `${r.correctCount}<small>/ ${r.total}</small>`;
+  document.getElementById('stat-accuracy').innerHTML = `${Math.round(r.accuracy*100)}<small>%</small>`;
+  document.getElementById('stat-time').innerHTML = `${r.totalTime}<small>s</small>`;
+  document.getElementById('stat-speed').innerHTML = `${r.avgSpeed}<small>s/ítem</small>`;
+
+  const bars = document.getElementById('bars-breakdown');
+  bars.innerHTML = '';
+  r.breakdown.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `<div class="label">${b.area}</div><div class="track"><div class="fill" style="width:0%"></div></div><div class="val">${b.score}%</div>`;
+    bars.appendChild(row);
+    requestAnimationFrame(() => { row.querySelector('.fill').style.width = b.score + '%'; });
+  });
+
+  drawBellCurve(r);
+  drawTimeChart(r);
+
+  // Behavior card
+  const card = document.getElementById('behavior-card');
+  const grid = document.getElementById('behavior-grid');
+  grid.innerHTML = '';
+  if (r.behavior.enabled) {
+    card.style.display = '';
+    const metrics = [
+      { k: 'Presencia', v: Math.round(r.behavior.presence*100), suf:'%' },
+      { k: 'Foco medio', v: Math.round(r.behavior.focus*100), suf:'%' },
+      { k: 'Compostura', v: Math.round(r.behavior.composure*100), suf:'%' },
+      { k: 'Estabilidad', v: Math.round(r.behavior.stability*100), suf:'%' },
+    ];
+    metrics.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'b-metric';
+      el.innerHTML = `<div class="k">${m.k}</div><div class="v">${m.v}<small>${m.suf}</small></div>`;
+      grid.appendChild(el);
+    });
+  } else {
+    card.style.display = 'none';
+  }
+
+  window._lastResult = r;
+}
+
+/* ================================================================
+   CERTIFICADO
+   ================================================================ */
+function genVerificationCode(r) {
+  const src = `${state.name}|${Date.now()}|${r.iq}|${r.percentile.toFixed(2)}`;
+  let h = 5381;
+  for (let i = 0; i < src.length; i++) h = ((h << 5) + h) + src.charCodeAt(i);
+  h = Math.abs(h);
+  const hex = h.toString(16).toUpperCase().padStart(8, '0').slice(-8);
+  return `CG-${hex.slice(0,4)}-${hex.slice(4,8)}`;
+}
+
+function showCertificate() {
+  const r = window._lastResult;
+  if (!r) return;
+  const cls = classifyIQ(r.iq);
+  document.getElementById('cert-name').textContent = state.name || 'Usuario Anónimo';
+  document.getElementById('cert-iq').textContent = r.iq;
+  document.getElementById('cert-class').textContent = cls.label;
+  document.getElementById('cert-pct').textContent =
+    (r.percentile >= 99 ? r.percentile.toFixed(2) : r.percentile.toFixed(1));
+  document.getElementById('cert-acc').textContent = Math.round(r.accuracy*100);
+  const d = new Date();
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('cert-date').textContent = `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
+  document.getElementById('cert-code').textContent = genVerificationCode(r);
+  showScreen('screen-certificate');
+}
+
+/* ================================================================
+   HERO CANVAS
+   ================================================================ */
+function initHero() {
+  const canvas = document.getElementById('hero-canvas');
+  function frame() {
+    const cubes = [];
+    for (let z=0; z<4; z++) {
+      const size = 4 - z;
+      for (let x=0; x<size; x++)
+        for (let y=0; y<size; y++)
+          cubes.push({gx:x, gy:y, gz:z, color: z % 2 === 0 ? '#7c5cff' : '#00e4a8'});
+    }
+    renderStructure(canvas, cubes, {size: 32});
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/* ================================================================
+   EVENTOS
+   ================================================================ */
+document.getElementById('btn-start').addEventListener('click', () => showScreen('screen-setup'));
+
+document.getElementById('btn-enable-cam').addEventListener('click', async () => {
+  const videoEl = document.getElementById('setup-video');
+  const placeholder = document.getElementById('camera-placeholder');
+  const status = document.getElementById('camera-status');
+  const statusText = document.getElementById('camera-status-text');
+  try {
+    statusText.textContent = 'solicitando permiso...';
+    status.style.display = ''; status.classList.remove('err');
+    await startCamera(videoEl);
+    videoEl.style.display = '';
+    placeholder.style.display = 'none';
+    statusText.textContent = 'cargando modelo neural...';
+    const ok = await tracker.init();
+    if (!ok) {
+      status.classList.add('err');
+      statusText.textContent = 'error de modelo';
+      return;
+    }
+    status.classList.add('ok');
+    statusText.textContent = 'cámara y IA activas';
+    state.cameraEnabled = true;
+    document.getElementById('btn-enable-cam').style.display = 'none';
+    document.getElementById('btn-disable-cam').style.display = '';
+  } catch (e) {
+    console.warn(e);
+    status.classList.add('err');
+    statusText.textContent = 'permiso denegado';
+  }
+});
+
+document.getElementById('btn-disable-cam').addEventListener('click', () => {
+  stopCamera();
+  document.getElementById('setup-video').style.display = 'none';
+  document.getElementById('camera-placeholder').style.display = '';
+  document.getElementById('camera-status').style.display = 'none';
+  document.getElementById('btn-enable-cam').style.display = '';
+  document.getElementById('btn-disable-cam').style.display = 'none';
+  state.cameraEnabled = false;
+});
+
+document.getElementById('btn-setup-back').addEventListener('click', () => {
+  stopCamera();
+  state.cameraEnabled = false;
+  document.getElementById('setup-video').style.display = 'none';
+  document.getElementById('camera-placeholder').style.display = '';
+  document.getElementById('camera-status').style.display = 'none';
+  document.getElementById('btn-enable-cam').style.display = '';
+  document.getElementById('btn-disable-cam').style.display = 'none';
+  showScreen('screen-start');
+});
+
+document.getElementById('btn-setup-continue').addEventListener('click', () => {
+  state.name = document.getElementById('input-name').value.trim();
+  const age = parseInt(document.getElementById('input-age').value);
+  state.age = isNaN(age) ? null : age;
+  startTest();
+});
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (state.selected === null) return;
+  if (state.timerId) clearInterval(state.timerId);
+  recordAnswer();
+  nextPuzzle();
+});
+
+document.getElementById('btn-abort').addEventListener('click', () => {
+  if (confirm('¿Abandonar el test? Se perderá el progreso.')) {
+    if (state.timerId) clearInterval(state.timerId);
+    tracker.stop(); stopHUDUpdater();
+    document.getElementById('cam-hud').classList.add('hidden');
+    showScreen('screen-start');
+  }
+});
+
+document.getElementById('btn-retry').addEventListener('click', () => {
+  stopCamera();
+  state.cameraEnabled = false;
+  showScreen('screen-start');
+});
+
+document.getElementById('btn-share').addEventListener('click', () => {
+  const r = window._lastResult;
+  if (!r) return;
+  const txt = `Mi resultado en Cogniscan: IQ ${r.iq} (percentil ${r.percentile.toFixed(1)}) · ${r.correctCount}/${r.total} aciertos · compostura ${Math.round((r.behavior.composure||0)*100)}%.`;
+  navigator.clipboard?.writeText(txt);
+  const btn = document.getElementById('btn-share');
+  const old = btn.textContent;
+  btn.textContent = '✓ Copiado';
+  setTimeout(() => btn.textContent = old, 1800);
+});
+
+document.getElementById('btn-certificate').addEventListener('click', showCertificate);
+document.getElementById('btn-back-result').addEventListener('click', () => showScreen('screen-result'));
+document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+document.getElementById('cam-toggle').addEventListener('click', () => {
+  const hud = document.getElementById('cam-hud');
+  hud.classList.toggle('collapsed');
+  document.getElementById('cam-toggle').textContent = hud.classList.contains('collapsed') ? '+' : '−';
+});
+
+window.addEventListener('load', () => { initHero(); });
+window.addEventListener('resize', () => {
+  if (document.getElementById('screen-test').classList.contains('active')) {
+    const canvas = document.getElementById('puzzle-canvas');
+    canvas.style.width = '100%';
+    PUZZLES[state.idx].render(canvas);
+  }
+});
+</script>
 </body>
 </html>
